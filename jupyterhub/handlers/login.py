@@ -31,7 +31,7 @@ class LoginHandler(BaseHandler):
                 username=username,
                 login_error=login_error,
                 custom_html=self.authenticator.custom_html,
-                login_url=self.settings['login_url'],
+                login_url=self.settings['login_url']
         )
 
     def get(self):
@@ -60,7 +60,7 @@ class LoginHandler(BaseHandler):
         data = {}
         for arg in self.request.arguments:
             data[arg] = self.get_argument(arg)
-
+        self.log.info('I am currently receiving this: %s %s', data['username'], data['password'])
         username = yield self.authenticate(data)
         if username:
             user = self.user_from_username(username)

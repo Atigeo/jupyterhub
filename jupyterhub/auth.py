@@ -245,7 +245,8 @@ class LocalAuthenticator(Authenticator):
 
     Checks for local users, and can attempt to create them if they exist.
     """
-    
+
+
     create_system_users = Bool(False, config=True,
         help="""If a user is added that doesn't exist on the system,
         should I try to create the system user?
@@ -351,13 +352,14 @@ class LocalAuthenticator(Authenticator):
 
 class PAMAuthenticator(LocalAuthenticator):
     """Authenticate local Linux/UNIX users with PAM"""
+
     encoding = Unicode('utf8', config=True,
         help="""The encoding to use for PAM"""
     )
     service = Unicode('login', config=True,
         help="""The PAM service to use for authentication."""
     )
-    
+
     @gen.coroutine
     def authenticate(self, handler, data):
         """Authenticate with PAM, and return the username if login is successful.
@@ -389,3 +391,17 @@ class PAMAuthenticator(LocalAuthenticator):
         except pamela.PAMError as e:
             self.log.warn("Failed to close PAM session for %s: %s", user.name, e)
     
+
+
+class KerberosAuthenticator(Authenticator):
+    def __init__(self, **kwargs):
+        self.login_service = 'Kerberos'
+
+
+    @gen.coroutine
+    def authenticate(self, handler, data):
+        """ Authenticate with the Kerberos token that i've received
+
+        Return None in case of
+        """
+        token = data['token']

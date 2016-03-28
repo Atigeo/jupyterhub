@@ -381,6 +381,8 @@ class BaseHandler(RequestHandler):
         return self.settings['jinja2_env'].get_template(name)
 
     def render_template(self, name, **ns):
+        self.log.info('========== \nThe template namespace is: %s', str(self.template_namespace) )
+        self.log.info('My authenticator is: %s', type(self.authenticator))
         ns.update(self.template_namespace)
         template = self.get_template(name)
         return template.render(**ns)
