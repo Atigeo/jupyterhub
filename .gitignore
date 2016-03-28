@@ -21,3 +21,4 @@ htmlcov
 /jupyterhub_cookie_secret 
 /jupyterhub.sqlite
 /npm-debug.log
+/jupyterhub_config.py
