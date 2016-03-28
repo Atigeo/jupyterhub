@@ -18,3 +18,6 @@ MANIFEST
 .coverage
 htmlcov
 .idea
+/jupyterhub_cookie_secret 
+/jupyterhub.sqlite
+/npm-debug.log
