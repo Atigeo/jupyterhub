@@ -331,7 +331,7 @@ c.Spawner.notebook_dir = '~/notebooks'
 # set of usernames of admin users
 # 
 # If unspecified, only the user that launches the server will be admin.
-c.Authenticator.admin_users = set(['cristisch'])
+#c.Authenticator.admin_users = set(['cristisch'])
 
 # Dictionary mapping authenticator usernames to JupyterHub users.
 # 
