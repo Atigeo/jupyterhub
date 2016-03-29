@@ -21,53 +21,57 @@ from .handlers.login import LoginHandler
 from .utils import url_path_join
 from .traitlets import Command
 
+import jwt
+
+
 class Authenticator(LoggingConfigurable):
     """A class for authentication.
     
     The primary API is one method, `authenticate`, a tornado coroutine
     for authenticating users.
     """
-    
+
     db = Any()
     admin_users = Set(config=True,
-        help="""set of usernames of admin users
+                      help="""set of usernames of admin users
 
         If unspecified, only the user that launches the server will be admin.
         """
-    )
+                      )
     whitelist = Set(config=True,
-        help="""Username whitelist.
+                    help="""Username whitelist.
         
         Use this to restrict which users can login.
         If empty, allow any user to attempt login.
         """
-    )
+                    )
     custom_html = Unicode('',
-        help="""HTML login form for custom handlers.
+                          help="""HTML login form for custom handlers.
         Override in form-based custom authenticators
         that don't use username+password,
         or need custom branding.
         """
-    )
+                          )
     login_service = Unicode('',
-        help="""Name of the login service for external
+                            help="""Name of the login service for external
         login services (e.g. 'GitHub').
         """
-    )
-    
+                            )
+
     username_pattern = Unicode(config=True,
-        help="""Regular expression pattern for validating usernames.
+                               help="""Regular expression pattern for validating usernames.
         
         If not defined: allow any username.
         """
-    )
+                               )
+
     def _username_pattern_changed(self, name, old, new):
         if not new:
             self.username_regex = None
         self.username_regex = re.compile(new)
-    
+
     username_regex = Any()
-    
+
     def validate_username(self, username):
         """Validate a (normalized) username.
         
@@ -76,16 +80,16 @@ class Authenticator(LoggingConfigurable):
         if not self.username_regex:
             return True
         return bool(self.username_regex.match(username))
-    
+
     username_map = Dict(config=True,
-        help="""Dictionary mapping authenticator usernames to JupyterHub users.
+                        help="""Dictionary mapping authenticator usernames to JupyterHub users.
         
         Can be used to map OAuth service names to local users, for instance.
         
         Used in normalize_username.
         """
-    )
-    
+                        )
+
     def normalize_username(self, username):
         """Normalize a username.
         
@@ -95,7 +99,7 @@ class Authenticator(LoggingConfigurable):
         username = username.lower()
         username = self.username_map.get(username, username)
         return username
-    
+
     def check_whitelist(self, username):
         """Check a username against our whitelist.
         
@@ -108,7 +112,7 @@ class Authenticator(LoggingConfigurable):
             # No whitelist means any name is allowed
             return True
         return username in self.whitelist
-    
+
     @gen.coroutine
     def get_authenticated_user(self, handler, data):
         """This is the outer API for authenticating a user.
@@ -136,7 +140,7 @@ class Authenticator(LoggingConfigurable):
         else:
             self.log.warning("User %r not in whitelist.", username)
             return
-    
+
     @gen.coroutine
     def authenticate(self, handler, data):
         """Authenticate a user with login form data.
@@ -161,13 +165,13 @@ class Authenticator(LoggingConfigurable):
         
         Can be used to do auth-related startup, e.g. opening PAM sessions.
         """
-    
+
     def post_spawn_stop(self, user, spawner):
         """Hook called after stopping a user container.
         
         Can be used to do auth-related cleanup, e.g. closing PAM sessions.
         """
-    
+
     def add_user(self, user):
         """Add a new user
         
@@ -184,7 +188,7 @@ class Authenticator(LoggingConfigurable):
             raise ValueError("Invalid username: %s" % user.name)
         if self.whitelist:
             self.whitelist.add(user.name)
-    
+
     def delete_user(self, user):
         """Triggered when a user is deleted.
         
@@ -195,7 +199,7 @@ class Authenticator(LoggingConfigurable):
             user (User): The User wrapper object
         """
         self.whitelist.discard(user.name)
-    
+
     def login_url(self, base_url):
         """Override to register a custom login handler
         
@@ -209,7 +213,7 @@ class Authenticator(LoggingConfigurable):
         
         """
         return url_path_join(base_url, 'login')
-    
+
     def logout_url(self, base_url):
         """Override to register a custom logout handler.
         
@@ -222,7 +226,7 @@ class Authenticator(LoggingConfigurable):
             str: The logout URL, e.g. '/hub/logout'
         """
         return url_path_join(base_url, 'logout')
-    
+
     def get_handlers(self, app):
         """Return any custom handlers the authenticator needs to register
         
@@ -240,20 +244,20 @@ class Authenticator(LoggingConfigurable):
             ('/login', LoginHandler),
         ]
 
+
 class LocalAuthenticator(Authenticator):
     """Base class for Authenticators that work with local Linux/UNIX users
 
     Checks for local users, and can attempt to create them if they exist.
     """
 
-
     create_system_users = Bool(False, config=True,
-        help="""If a user is added that doesn't exist on the system,
+                               help="""If a user is added that doesn't exist on the system,
         should I try to create the system user?
         """
-    )
+                               )
     add_user_cmd = Command(config=True,
-        help="""The command to use for creating users as a list of strings.
+                           help="""The command to use for creating users as a list of strings.
         
         For each element in the list, the string USERNAME will be replaced with
         the user's username. The username will also be appended as the final argument.
@@ -272,7 +276,8 @@ class LocalAuthenticator(Authenticator):
         
         when the user 'river' is created.
         """
-    )
+                           )
+
     def _add_user_cmd_default(self):
         if sys.platform == 'darwin':
             raise ValueError("I don't know how to create users on OS X")
@@ -325,9 +330,9 @@ class LocalAuthenticator(Authenticator):
                 yield gen.maybe_future(self.add_system_user(user))
             else:
                 raise KeyError("User %s does not exist." % user.name)
-        
+
         yield gen.maybe_future(super().add_user(user))
-    
+
     @staticmethod
     def system_user_exists(user):
         """Check if the user exists on the system"""
@@ -341,7 +346,7 @@ class LocalAuthenticator(Authenticator):
     def add_system_user(self, user):
         """Create a new Linux/UNIX user on the system. Works on FreeBSD and Linux, at least."""
         name = user.name
-        cmd = [ arg.replace('USERNAME', name) for arg in self.add_user_cmd ] + [name]
+        cmd = [arg.replace('USERNAME', name) for arg in self.add_user_cmd] + [name]
         self.log.info("Creating user: %s", ' '.join(map(pipes.quote, cmd)))
         p = Popen(cmd, stdout=PIPE, stderr=STDOUT)
         p.wait()
@@ -354,14 +359,14 @@ class PAMAuthenticator(LocalAuthenticator):
     """Authenticate local Linux/UNIX users with PAM"""
 
     encoding = Unicode('utf8', config=True,
-        help="""The encoding to use for PAM"""
-    )
+                       help="""The encoding to use for PAM"""
+                       )
     service = Unicode('login', config=True,
-        help="""The PAM service to use for authentication."""
-    )
+                      help="""The PAM service to use for authentication."""
+                      )
 
     open_sessions = Bool(True, config=True,
-        help="""Whether to open PAM sessions when spawners are started.
+                         help="""Whether to open PAM sessions when spawners are started.
         
         This may trigger things like mounting shared filsystems,
         loading credentials, etc. depending on system configuration,
@@ -371,8 +376,8 @@ class PAMAuthenticator(LocalAuthenticator):
         
             c.PAMAuthenticator.open_sessions = False
         """
-    )
-    
+                         )
+
     @gen.coroutine
     def authenticate(self, handler, data):
         """Authenticate with PAM, and return the username if login is successful.
@@ -389,7 +394,7 @@ class PAMAuthenticator(LocalAuthenticator):
                 self.log.warn("PAM Authentication failed: %s", e)
         else:
             return username
-    
+
     def pre_spawn_start(self, user, spawner):
         """Open PAM session for user"""
         if not self.open_sessions:
@@ -400,7 +405,7 @@ class PAMAuthenticator(LocalAuthenticator):
             self.log.warn("Failed to open PAM session for %s: %s", user.name, e)
             self.log.warn("Disabling PAM sessions from now on.")
             self.open_sessions = False
-    
+
     def post_spawn_stop(self, user, spawner):
         """Close PAM session for user"""
         if not self.open_sessions:
@@ -411,18 +416,40 @@ class PAMAuthenticator(LocalAuthenticator):
             self.log.warn("Failed to close PAM session for %s: %s", user.name, e)
             self.log.warn("Disabling PAM sessions from now on.")
             self.open_sessions = False
-    
 
 
-class KerberosAuthenticator(Authenticator):
+class JWTAuthenticator(Authenticator):
+    secret = Unicode('secret', config=True,
+                     help="""Configure this secret in order to tell the decoder with what to
+        decode the user's credentials from the JWT
+
+        Change it with:
+            c.JWTAuthenticator.secret = 'myspecialsecret'
+        """)
+
+    users = [
+        {'username': 'chris', 'password': 123},
+        {'username': 'radu', 'password': 1234}
+    ]
+
     def __init__(self, **kwargs):
-        self.login_service = 'Kerberos'
-
+        self.login_service = 'JWT'
 
     @gen.coroutine
     def authenticate(self, handler, data):
-        """ Authenticate with the Kerberos token that i've received
+        """ Authenticate with the JWT token that i've received
 
         Return None in case of
         """
+        self.log.info("I got the following data: " + str(data))
         token = data['token']
+        try:
+            user = jwt.decode(token, self.secret)
+            if user in self.users:
+                return user['username']
+        except jwt.exceptions.DecodeError:
+            self.log.error("There was an error decoding the token, invalid secret key!")
+            return
+        except Exception:
+            return
+        return

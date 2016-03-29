@@ -258,6 +258,7 @@ class BaseHandler(RequestHandler):
     def authenticate(self, data):
         auth = self.authenticator
         if auth is not None:
+            self.log.info('Getting authenticated user: ' + str(data))
             result = yield auth.get_authenticated_user(self, data)
             return result
         else:
@@ -381,7 +382,6 @@ class BaseHandler(RequestHandler):
         return self.settings['jinja2_env'].get_template(name)
 
     def render_template(self, name, **ns):
-        self.log.info('========== \nThe template namespace is: %s', str(self.template_namespace) )
         self.log.info('My authenticator is: %s', type(self.authenticator))
         ns.update(self.template_namespace)
         template = self.get_template(name)

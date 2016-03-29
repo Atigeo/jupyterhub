@@ -60,8 +60,10 @@ class LoginHandler(BaseHandler):
         data = {}
         for arg in self.request.arguments:
             data[arg] = self.get_argument(arg)
-        self.log.info('I am currently receiving this: %s %s', data['username'], data['password'])
+        self.log.info('I am getting a post, proceeding to verify user... ')
+        #self.log.info('I am currently receiving this: %s %s', data['username'], data['password'])
         username = yield self.authenticate(data)
+        self.log.info('After auth, i got: ' + str(username) if username else 0)
         if username:
             user = self.user_from_username(username)
             already_running = False
@@ -80,7 +82,7 @@ class LoginHandler(BaseHandler):
         else:
             self.log.debug("Failed login for %s", data.get('username', 'unknown user'))
             html = self._render(
-                login_error='Invalid username or password',
+                login_error='Invalid token for user',
                 username=username,
             )
             self.finish(html)

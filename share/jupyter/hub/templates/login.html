@@ -11,7 +11,12 @@
 {{ custom_html }}
 {% elif login_service %}
 <div class="service-login">
-  <a class='btn btn-jupyter btn-lg' href='{{login_url}}'>
+   {% if login_error %}
+    <p class="login_error">
+      {{login_error}}
+    </p>
+    {% endif %}
+  <a class='btn btn-jupyter btn-lg' id="login_btn" data-url='{{login_url}}'>
     Sign in with {{login_service}}
   </a>
 </div>
@@ -26,7 +31,7 @@
       {{login_error}}
     </p>
     {% endif %}
-    <label for="username_input">Sal boss, zi un nume:</label>
+    <label for="username_input">Username:</label>
     <input
       id="username_input"
       type="username"
@@ -64,5 +69,7 @@
 
 {% block script %}
 {{super()}}
-
+<script type="text/javascript">
+require(["jwtauth"]);
+</script>
 {% endblock %}
