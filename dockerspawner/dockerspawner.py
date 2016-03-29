@@ -70,7 +70,7 @@ class DockerSpawner(Spawner):
         return cls._client
 
     container_id = Unicode()
-    container_ip = Unicode('192.168.13.24', config=True)
+    container_ip = Unicode('127.0.0.1', config=True)
     container_image = Unicode("jupyter/singleuser-r", config=True)
     container_prefix = Unicode(
         "jupyter",
