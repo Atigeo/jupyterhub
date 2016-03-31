@@ -22,3 +22,4 @@ htmlcov
 /jupyterhub.sqlite
 /npm-debug.log
 /jupyterhub_config.py
+start.sh
