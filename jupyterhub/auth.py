@@ -10,6 +10,7 @@ import re
 from shutil import which
 import sys
 from subprocess import Popen, PIPE, STDOUT
+from textwrap import dedent
 
 from tornado import gen
 import pamela
@@ -18,6 +19,7 @@ from traitlets.config import LoggingConfigurable
 from traitlets import Bool, Set, Unicode, Dict, Any
 
 from .handlers.login import LoginHandler
+from .handlers.login import JWTLoginHandler
 from .utils import url_path_join
 from .traitlets import Command
 
@@ -241,7 +243,7 @@ class Authenticator(LoggingConfigurable):
         
         """
         return [
-            ('/login', LoginHandler),
+            ('/login', JWTLoginHandler),
         ]
 
 
@@ -419,20 +421,21 @@ class PAMAuthenticator(LocalAuthenticator):
 
 
 class JWTAuthenticator(Authenticator):
-    secret = Unicode('secret', config=True,
-                     help="""Configure this secret in order to tell the decoder with what to
+
+    secret_key = Unicode('my secret', config=True,
+                     help=dedent("""Configure this secret in order to tell the decoder with what to
         decode the user's credentials from the JWT
 
         Change it with:
             c.JWTAuthenticator.secret = 'myspecialsecret'
-        """)
+        """))
 
     users = [
-        {'username': 'chris', 'password': 123},
-        {'username': 'radu', 'password': 1234}
+        {'sub': 'admin@xpatterns.com', 'admin': True}
     ]
 
     def __init__(self, **kwargs):
+        super().__init__()
         self.login_service = 'JWT'
 
     @gen.coroutine
@@ -443,13 +446,51 @@ class JWTAuthenticator(Authenticator):
         """
         self.log.info("I got the following data: " + str(data))
         token = data['token']
+        print('Secret: ' + str(self.secret_key))
         try:
-            user = jwt.decode(token, self.secret)
-            if user in self.users:
-                return user['username']
+            decoded_token = jwt.decode(token, self.secret_key, options={'verify_iat': False})
+            for user in self.users:
+                if user['sub'] == decoded_token['sub']:
+                    return user['sub']
         except jwt.exceptions.DecodeError:
             self.log.error("There was an error decoding the token, invalid secret key!")
             return
-        except Exception:
+        except Exception as e:
+            self.log.error("Error parsing jwt token: " + str(e))
             return
         return
+
+
+class JWTHeaderAuthenticator(Authenticator):
+
+    secret_key = Unicode('my secret', config=True,
+                     help=dedent("""Configure this secret in order to tell the decoder with what to
+        decode the user's credentials from the JWT
+
+        Change it with:
+            c.JWTAuthenticator.secret = 'myspecialsecret'
+        """))
+
+    users = [
+        {'sub': 'admin@xpatterns.com', 'admin': True}
+    ]
+
+    def __init__(self, **kwargs):
+        self.custom_html = '<br> <div style="text-align: center; background: black;"> <img src="http://atigeo.com/assets/imgs/xpatterns-logo.svg"> </div>'
+
+    @gen.coroutine
+    def authenticate(self, handler, token):
+        """ Authenticate with the JWT token that i've received
+
+        Return None in case of
+        """
+        try:
+            self.log.info("I got the following data: " + str(token))
+            print('Secret: ' + str(self.secret_key))
+            decoded_token = jwt.decode(token, self.secret_key, options={'verify_iat': False})
+            for user in self.users:
+                if user['sub'] == decoded_token['sub']:
+                    return user['sub']
+        except Exception as e:
+            self.log.error("Error parsing jwt token: " + str(e))
+            return

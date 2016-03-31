@@ -88,6 +88,79 @@ class LoginHandler(BaseHandler):
             self.finish(html)
 
 
+class JWTLoginHandler(LoginHandler):
+
+    def _render(self, login_error=None, username=None):
+        return self.render_template('login.html',
+                                    next=url_escape(self.get_argument('next', default='')),
+                                    username=username,
+                                    login_error=login_error,
+                                    custom_html=self.authenticator.custom_html,
+                                    login_url=self.settings['login_url'])
+
+    @gen.coroutine
+    def get(self):
+        next_url = self.get_argument('next', '')
+        if not next_url.startswith('/'):
+            # disallow non-absolute next URLs (e.g. full URLs)
+            next_url = ''
+        user = self.get_current_user()
+        print('Current user is: ' + (str(user) if user is not None else 'None'))
+        if user:
+            if not next_url:
+                if user.running:
+                    next_url = user.url
+                else:
+                    next_url = self.hub.server.base_url
+            # set new login cookie
+            # because single-user cookie may have been cleared or incorrect
+            self.set_login_cookie(self.get_current_user())
+            self.redirect(next_url, permanent=False)
+        else:
+            token = self.request.headers.get('Bearer', '')
+            self.log.info('Current bearer: ' + token)
+            res = yield self._authenticate_with_jwt(token)
+            if res['html']:
+                self.finish(res['html'])
+            else:
+                self.redirect(res['next_url'])
+
+
+    @gen.coroutine
+    def _authenticate_with_jwt(self, token):
+        print('Authenticating with jwt now... ')
+        if token:
+            username = yield self.authenticate(token)
+            print('Username at the end = ' + (username if username else 'None'))
+            if username:
+                self.log.info('User has just authenticated!')
+                user = self.user_from_username(username)
+                already_running = False
+                if user.spawner:
+                    status = yield user.spawner.poll()
+                    already_running = (status == None)
+                if not already_running and not user.spawner.options_form:
+                    yield self.spawn_single_user(user)
+                self.set_login_cookie(user)
+                next_url = self.get_argument('next', default='')
+                if not next_url.startswith('/'):
+                    next_url = ''
+                next_url = next_url or self.hub.server.base_url
+                self.log.info("User logged in: %s", username)
+                print("NEXT URL: " + next_url)
+                raise gen.Return({'html': '', 'next_url': next_url})
+            else:
+                self.log.warn("Failed login for token %s", token)
+                html = self._render(
+                    login_error='Invalid token for user',
+                    username=username,
+                )
+                raise gen.Return({'html': html})
+        else:
+            self.log.warn('Token not provided by user!')
+            html = self._render(login_error='You need to have a valid token!')
+            raise gen.Return({'html': html})
+
 # /login renders the login page or the "Login with..." link,
 # so it should always be registered.
 # /logout clears cookies.

@@ -160,6 +160,7 @@ class BaseHandler(RequestHandler):
         cookie_id = cookie_id.decode('utf8', 'replace')
         u = self.db.query(orm.User).filter(orm.User.cookie_id==cookie_id).first()
         user = self._user_from_orm(u)
+        self.log.info("User from cookie: %s", str(user))
         if user is None:
             self.log.warn("Invalid cookie token")
             # have cookie, but it's not valid. Clear it and start over.
@@ -181,6 +182,7 @@ class BaseHandler(RequestHandler):
         user = self.get_current_user_token()
         if user is not None:
             return user
+        print("Getting the user's cookie!")
         return self.get_current_user_cookie()
 
     def find_user(self, name):
@@ -382,6 +384,7 @@ class BaseHandler(RequestHandler):
         return self.settings['jinja2_env'].get_template(name)
 
     def render_template(self, name, **ns):
+        print(self)
         self.log.info('My authenticator is: %s', type(self.authenticator))
         ns.update(self.template_namespace)
         template = self.get_template(name)
