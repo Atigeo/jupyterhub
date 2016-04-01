@@ -125,7 +125,6 @@ class JWTLoginHandler(LoginHandler):
             else:
                 self.redirect(res['next_url'])
 
-
     @gen.coroutine
     def _authenticate_with_jwt(self, token):
         print('Authenticating with jwt now... ')
