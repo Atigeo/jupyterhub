@@ -33,7 +33,6 @@ class CookieAPIHandler(APIHandler):
         else:
             cookie_value = cookie_value.encode('utf8')
         user = self._user_for_cookie(cookie_name, cookie_value)
-        #user = self._user_from_jwt_token(user, cookie_name)
         if user is None:
             raise web.HTTPError(404)
         self.write(json.dumps(self.user_model(user)))
