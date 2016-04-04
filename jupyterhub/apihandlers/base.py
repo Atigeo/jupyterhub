@@ -115,4 +115,3 @@ class APIHandler(BaseHandler):
     def options(self, *args, **kwargs):
         self.set_header('Access-Control-Allow-Headers', 'accept, content-type')
         self.finish()
-    

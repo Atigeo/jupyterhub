@@ -19,7 +19,7 @@ from .. import orm
 from ..user import User
 from ..spawner import LocalProcessSpawner
 from ..utils import url_path_join
-
+import jwt
 # pattern for the authentication token header
 auth_header_pat = re.compile(r'^token\s+([^\s]+)$')
 
@@ -167,6 +167,25 @@ class BaseHandler(RequestHandler):
             clear()
         return user
 
+    def _user_from_jwt_token(self, cookie_user, cookie_name):
+        #TODO change to a database secret or service or whatever
+        secret = 'my secret'
+        header = self.request.headers.get('Authorization', '')
+        header = header.strip()
+        if header:
+            split_header = header.split(' ')
+            if len(split_header) == 2 and split_header[0] == 'Bearer' and split_header[1]:
+                try:
+                    decoded_token = jwt.decode(split_header[1], secret, options={'verify_iat': False})
+                    if decoded_token['sub'] == cookie_user.name:
+                        self.log.info('Token matches cookie user name, proceeding!')
+                        return cookie_user
+                except Exception as e:
+                    self.log.error(str(e))
+        else:
+            self.clear_cookie(cookie_name, path=self.hub.server.base_url)
+            return
+
     def _user_from_orm(self, orm_user):
         """return User wrapper from orm.User object"""
         if orm_user is None:
@@ -175,14 +194,15 @@ class BaseHandler(RequestHandler):
 
     def get_current_user_cookie(self):
         """get_current_user from a cookie token"""
-        return self._user_for_cookie(self.hub.server.cookie_name)
+        user = self._user_for_cookie(self.hub.server.cookie_name)
+        if user is not None:
+            return self._user_from_jwt_token(user, self.hub.server.cookie_name)
 
     def get_current_user(self):
         """get current username"""
         user = self.get_current_user_token()
         if user is not None:
             return user
-        print("Getting the user's cookie!")
         return self.get_current_user_cookie()
 
     def find_user(self, name):
@@ -384,8 +404,6 @@ class BaseHandler(RequestHandler):
         return self.settings['jinja2_env'].get_template(name)
 
     def render_template(self, name, **ns):
-        print(self)
-        self.log.info('My authenticator is: %s', type(self.authenticator))
         ns.update(self.template_namespace)
         template = self.get_template(name)
         return template.render(**ns)
