@@ -117,20 +117,28 @@ class JWTLoginHandler(LoginHandler):
             self.set_login_cookie(self.get_current_user())
             self.redirect(next_url, permanent=False)
         else:
-            token = self.request.headers.get('Bearer', '')
-            self.log.info('Current bearer: ' + token)
-            res = yield self._authenticate_with_jwt(token)
-            if res['html']:
-                self.finish(res['html'])
+            auth_header = self.request.headers.get('Authorization', '')
+            split_token = auth_header.split(' ')
+
+            if len(split_token) == 2 and split_token[0] == 'Bearer' and \
+                    (split_token[1] is not '' or split_token[1] is not ' ') :
+                token = split_token[1]
+                self.log.info('Current bearer: ' + token)
+                res = yield self._authenticate_with_jwt(token)
+                if res['html']:
+                    self.finish(res['html'])
+                else:
+                    self.redirect(res['next_url'])
             else:
-                self.redirect(res['next_url'])
+                html = self._render(
+                    login_error='Invalid token for user'
+                )
+                self.finish(html)
 
     @gen.coroutine
     def _authenticate_with_jwt(self, token):
-        print('Authenticating with jwt now... ')
         if token:
             username = yield self.authenticate(token)
-            print('Username at the end = ' + (username if username else 'None'))
             if username:
                 self.log.info('User has just authenticated!')
                 user = self.user_from_username(username)
