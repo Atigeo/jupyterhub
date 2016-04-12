@@ -460,37 +460,3 @@ class JWTAuthenticator(Authenticator):
             return
         return
 
-
-class JWTHeaderAuthenticator(Authenticator):
-
-    secret_key = Unicode('my secret', config=True,
-                     help=dedent("""Configure this secret in order to tell the decoder with what to
-        decode the user's credentials from the JWT
-
-        Change it with:
-            c.JWTAuthenticator.secret = 'myspecialsecret'
-        """))
-
-    users = [
-        {'sub': 'admin@xpatterns.com', 'admin': True}
-    ]
-
-    def __init__(self, **kwargs):
-        self.custom_html = '<br> <div style="text-align: center; background: black;"> <img src="http://atigeo.com/assets/imgs/xpatterns-logo.svg"> </div>'
-
-    @gen.coroutine
-    def authenticate(self, handler, token):
-        """ Authenticate with the JWT token that i've received
-
-        Return None in case of
-        """
-        try:
-            self.log.info("I got the following data: " + str(token))
-            print('Secret: ' + str(self.secret_key))
-            decoded_token = jwt.decode(token, self.secret_key, options={'verify_iat': False})
-            for user in self.users:
-                if user['sub'] == decoded_token['sub']:
-                    return user['sub']
-        except Exception as e:
-            self.log.error("Error parsing jwt token: " + str(e))
-            return

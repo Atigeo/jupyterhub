@@ -107,6 +107,8 @@ class DockerSpawner(Spawner):
         )
     )
 
+
+
     use_docker_client_env = Bool(False, config=True, help="If True, will use Docker client env variable (boot2docker friendly)")
     tls = Bool(False, config=True, help="If True, connect to docker with --tls")
     tls_verify = Bool(False, config=True, help="If True, connect to docker with --tlsverify")
@@ -173,6 +175,16 @@ class DockerSpawner(Spawner):
             The name of the docker network from which to retrieve the internal IP address. Defaults to the default
             docker network 'bridge'. You need to set this if you run your jupyterhub containers in a
             non-standard network. Only has an effect if use_internal_ip=True.
+            """
+        )
+    )
+
+    kerberos_token = Unicode(
+        "token",
+        config=True,
+        help=dedent(
+            """
+            This is for providing a kerberos token that will then be used to access the SparkContext from python
             """
         )
     )
@@ -269,7 +281,8 @@ class DockerSpawner(Spawner):
             JPY_USER=self.user.name,
             JPY_COOKIE_NAME=self.user.server.cookie_name,
             JPY_BASE_URL=self.user.server.base_url,
-            JPY_HUB_PREFIX=self.hub.server.base_url
+            JPY_HUB_PREFIX=self.hub.server.base_url,
+            KERBEROS_TOKEN=self.kerberos_token
         ))
 
         if self.hub_ip_connect:
@@ -359,7 +372,7 @@ class DockerSpawner(Spawner):
         container = yield self.get_container()
         if container is None:
             image = image or self.container_image
-
+            self.log.info("my container is: " + image)
             # build the dictionary of keyword arguments for create_container
             create_kwargs = dict(
                 image=image,

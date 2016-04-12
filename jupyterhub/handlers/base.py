@@ -169,19 +169,22 @@ class BaseHandler(RequestHandler):
 
     def _user_from_jwt_token(self, cookie_user, cookie_name):
         #TODO change to a database secret or service or whatever
-        secret = 'my secret'
+        secret = self.authenticator.secret_key
+        audience = self.authenticator.audience if self.authenticator.audience else ''
+
         header = self.request.headers.get('Authorization', '')
         header = header.strip()
         if header:
             split_header = header.split(' ')
             if len(split_header) == 2 and split_header[0] == 'Bearer' and split_header[1]:
                 try:
-                    decoded_token = jwt.decode(split_header[1], secret, options={'verify_iat': False})
+                    decoded_token = jwt.decode(split_header[1], secret, options={'verify_iat': False}, audience=audience)
                     if decoded_token['sub'] == cookie_user.name:
                         self.log.info('Token matches cookie user name, proceeding!')
                         return cookie_user
                 except Exception as e:
                     self.log.error(str(e))
+                    return
         else:
             self.clear_cookie(cookie_name, path=self.hub.server.base_url)
             return
