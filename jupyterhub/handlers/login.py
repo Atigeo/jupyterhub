@@ -142,6 +142,8 @@ class JWTLoginHandler(LoginHandler):
             if username:
                 self.log.info('User has just authenticated!')
                 user = self.user_from_username(username)
+                if user is not None:
+                    user = self.update_users_token(username, token)
                 already_running = False
                 if user.spawner:
                     status = yield user.spawner.poll()
@@ -167,6 +169,14 @@ class JWTLoginHandler(LoginHandler):
             self.log.warn('Token not provided by user!')
             html = self._render(login_error='You need to have a valid token!')
             raise gen.Return({'html': html})
+
+    def update_users_token(self, username, token):
+        self.log.info('Updating the user\'s JWT token')
+        user = self.user_from_username(username)
+        user.kerberos_token = token
+        self.db.commit()
+        return self.user_from_username(username)
+
 
 # /login renders the login page or the "Login with..." link,
 # so it should always be registered.

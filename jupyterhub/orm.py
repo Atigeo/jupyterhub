@@ -289,6 +289,9 @@ class User(Base):
 
     other_user_cookies = set([])
 
+    #kerberos token
+    kerberos_token = Column(Unicode(1023))
+
     def __repr__(self):
         if self.server:
             return "<{cls}({name}@{ip}:{port})>".format(

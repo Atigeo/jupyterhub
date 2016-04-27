@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Extend regular notebook server to be aware of multiuser things."""
 
 # Copyright (c) Jupyter Development Team.
@@ -78,16 +78,18 @@ class JupyterHubLoginHandler(LoginHandler):
             data = r.json()
         cookie_cache[encrypted_cookie] = data
         return data
-    
+
     @staticmethod
     def get_user(self):
         """alternative get_current_user to query the central server"""
         # only allow this to be called once per handler
         # avoids issues if an error is raised,
         # since this may be called again when trying to render the error page
+
+
         if hasattr(self, '_cached_user'):
             return self._cached_user
-        
+
         self._cached_user = None
         my_user = self.settings['user']
         encrypted_cookie = self.get_cookie(self.cookie_name)
@@ -98,6 +100,7 @@ class JupyterHubLoginHandler(LoginHandler):
                 return None
             user = auth_data['name']
             if user == my_user:
+
                 self._cached_user = user
                 return user
             else:
@@ -105,7 +108,6 @@ class JupyterHubLoginHandler(LoginHandler):
         else:
             self.log.debug("No token cookie")
             return None
-
 
 class JupyterHubLogoutHandler(LogoutHandler):
     def get(self):
@@ -265,6 +267,8 @@ class SingleUserNotebookApp(NotebookApp):
         s['login_url'] = self.hub_host + self.hub_prefix
         s['hub_api_url'] = self.hub_api_url
         s['csp_report_uri'] = self.hub_host + url_path_join(self.hub_prefix, 'security/csp-report')
+        #kerberos token
+        s['kerberos_token'] = env.pop('KERBEROS_TOKEN')
         super(SingleUserNotebookApp, self).init_webapp()
         self.patch_templates()
     

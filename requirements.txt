@@ -6,4 +6,4 @@ sqlalchemy>=1.0
 requests
 escapism
 docker-py
-pyjwt
+pyjwt>=1.4.0

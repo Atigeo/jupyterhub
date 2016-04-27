@@ -305,4 +305,3 @@ class User(HasTraits):
                 yield gen.maybe_future(
                     auth.post_spawn_stop(self, spawner)
                 )
-

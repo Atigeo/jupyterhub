@@ -63,7 +63,6 @@ class DockerSpawner(Spawner):
                         assert_hostname = self.tls_assert_hostname)
                 else:
                     tls_config = None
-                self.log.info("Do I have tls? %s", self.tls )
                 docker_host = os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
                 client = docker.Client(base_url=docker_host, tls=tls_config, version='auto')
             cls._client = client
@@ -187,6 +186,7 @@ class DockerSpawner(Spawner):
             This is for providing a kerberos token that will then be used to access the SparkContext from python
             """
         )
+
     )
 
     @property
@@ -277,6 +277,12 @@ class DockerSpawner(Spawner):
 
     def get_env(self):
         env = super(DockerSpawner, self).get_env()
+
+        tokenString = str("")
+        if self.user.orm_user.kerberos_token is not None:
+            tokenString = str(self.user.orm_user.kerberos_token)
+        self.kerberos_token = tokenString
+
         env.update(dict(
             JPY_USER=self.user.name,
             JPY_COOKIE_NAME=self.user.server.cookie_name,
@@ -372,7 +378,7 @@ class DockerSpawner(Spawner):
         container = yield self.get_container()
         if container is None:
             image = image or self.container_image
-            self.log.info("my container is: " + image)
+            self.log.info("Docker image: " + image)
             # build the dictionary of keyword arguments for create_container
             create_kwargs = dict(
                 image=image,
