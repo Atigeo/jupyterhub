@@ -42,9 +42,10 @@ class APIHandler(BaseHandler):
     
     def get_current_user_cookie(self):
         """Override get_user_cookie to check Referer header"""
-        if not self.check_referer():
+        cookie_user = super().get_current_user_cookie()
+        if cookie_user and not self.check_referer():
             return None
-        return super().get_current_user_cookie()
+        return cookie_user
 
     def get_json_body(self):
         """Return the body of the request as JSON data."""
