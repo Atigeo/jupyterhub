@@ -14,7 +14,7 @@ class JWTHeaderAuthenticator(Authenticator):
                          config=True)
 
     #audience = Unicode('#/connect', config=True)
-    audience = Unicode('', config=True)
+    audience = ''
 
     def __init__(self, **kwargs):
         Authenticator.__init__(self, **kwargs)
@@ -28,11 +28,11 @@ class JWTHeaderAuthenticator(Authenticator):
         """
         try:
             self.log.info("I got the following data: " + str(token))
-            print('Secret: ' + str(self.secret_key))
+            print('Secret: ' + str(self.    secret_key))
             if self.audience:
                 decoded_token = jwt.decode(token, self.secret_key, options={'verify_iat': False}, audience=self.audience)
             else:
-                decoded_token = jwt.decode(token, self.secret_key, options={'verify_iat': False})
+                decoded_token = jwt.decode(token, self.secret_key, options={'verify_iat': False, 'verify_aud': False})
 
             return decoded_token['sub']
         except Exception as e:

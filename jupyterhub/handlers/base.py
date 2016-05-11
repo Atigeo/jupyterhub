@@ -178,7 +178,10 @@ class BaseHandler(RequestHandler):
             split_header = header.split(' ')
             if len(split_header) == 2 and split_header[0] == 'Bearer' and split_header[1]:
                 try:
-                    decoded_token = jwt.decode(split_header[1], secret, options={'verify_iat': False}, audience=audience)
+                    if audience:
+                        decoded_token = jwt.decode(split_header[1], secret, options={'verify_iat': False}, audience=audience)
+                    else:
+                        decoded_token = jwt.decode(split_header[1], secret, options={'verify_iat': False, 'verify_aud': False})
                     if decoded_token['sub'] == cookie_user.name:
                         self.log.info('Token matches cookie user name, proceeding!')
                         return cookie_user
