@@ -288,7 +288,8 @@ class DockerSpawner(Spawner):
             JPY_COOKIE_NAME=self.user.server.cookie_name,
             JPY_BASE_URL=self.user.server.base_url,
             JPY_HUB_PREFIX=self.hub.server.base_url,
-            KERBEROS_TOKEN=self.kerberos_token
+            XPATTERNS_JWT_TOKEN=self.kerberos_token,
+
         ))
 
         if self.hub_ip_connect:
