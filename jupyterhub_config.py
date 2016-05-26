@@ -1,6 +1,7 @@
 c.JupyterHub.spawner_class= 'dockerspawner.dockerspawner.DockerSpawner'
-c.DockerSpawner.container_image = 'radu/xpatterns-jupyter'
-c.DockerSpawner.hub_ip_connect = '192.168.13.45'
-c.JupyterHub.hub_ip = '192.168.13.45'
+c.DockerSpawner.container_image = 'jupyter/singleuser'
+c.DockerSpawner.hub_ip_connect = '10.3.22.95'
+c.JupyterHub.hub_ip = '10.3.22.95'
 c.JupyterHub.cleanup_proxy = True
 c.JupyterHub.authenticator_class = 'jupyterhub.jwtauth.JWTHeaderAuthenticator'
+c.JWTHeaderAuthenticator.token_service_url = 'http://10.3.22.95:16350/token'
