@@ -114,6 +114,7 @@ class JWTLoginHandler(LoginHandler):
                     next_url = self.hub.server.base_url
             # set new login cookie
             # because single-user cookie may have been cleared or incorrect
+            self.log.info('Passing to the next route, user is already authed... ')
             self.set_login_cookie(self.get_current_user())
             self.redirect(next_url, permanent=False)
         else:

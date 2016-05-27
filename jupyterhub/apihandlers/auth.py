@@ -56,10 +56,12 @@ class JWTAPIHandler(APIHandler):
                         self.write(json.dumps(self.user_model(user)))
                 except Exception:
                     raise web.HTTPError(401)
+        else:
+            raise web.HTTPError(401)
 
 
 default_handlers = [
     (r"/api/authorizations/cookie/([^/]+)(?:/([^/]+))?", CookieAPIHandler),
     (r"/api/authorizations/token/([^/]+)", TokenAPIHandler),
-    (r"/api/authorizations/jwt/([^/]+)", TokenAPIHandler)
+    (r"/api/authorizations/jwt/([^/]+)", JWTAPIHandler)
 ]

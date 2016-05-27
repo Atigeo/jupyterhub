@@ -6,7 +6,7 @@
 import re
 from datetime import timedelta
 from http.client import responses
-
+import requests
 from jinja2 import TemplateNotFound
 
 from tornado.log import app_log
@@ -14,7 +14,7 @@ from tornado.httputil import url_concat
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler
 from tornado import gen, web
-
+import json
 from .. import orm
 from ..user import User
 from ..spawner import LocalProcessSpawner
@@ -184,13 +184,29 @@ class BaseHandler(RequestHandler):
                         decoded_token = jwt.decode(split_header[1], secret, options={'verify_iat': False, 'verify_aud': False})
                     if decoded_token['sub'] == cookie_user.name:
                         self.log.info('Token matches cookie user name, proceeding!')
+                        self._refresh_user_jwt_token(split_header[1], decoded_token)
                         return cookie_user
+
                 except Exception as e:
                     self.log.error(str(e))
                     return
         else:
             self.clear_cookie(cookie_name, path=self.hub.server.base_url)
             return
+
+    def _refresh_user_jwt_token(self, token, decoded_token):
+        if self.authenticator.token_service_url:
+            try:
+                r = requests.post(self.authenticator.token_service_url, headers={'Content-Type': 'application/json'},
+                                  data=json.dumps({'token': token}))
+                if not r.ok:
+                    self.log.error(str(r.content))
+                else:
+                    self.log.info('Updated token service for user: ' + str(decoded_token['sub']))
+            except Exception as e:
+                self.log.error('Error refreshing token in service ' + str(e))
+        else:
+            self.log.warn('No jwt token service url was provided')
 
     def _user_from_orm(self, orm_user):
         """return User wrapper from orm.User object"""
