@@ -21,9 +21,12 @@ from traitlets import (
     Bool,
 )
 
+import stat
+
 
 class UnicodeOrFalse(Unicode):
     info_text = 'a unicode string or False'
+
     def validate(self, obj, value):
         if value is False:
             return value
@@ -31,8 +34,8 @@ class UnicodeOrFalse(Unicode):
 
 
 class DockerSpawner(Spawner):
-
     _executor = None
+
     @property
     def executor(self):
         """single global executor"""
@@ -42,6 +45,7 @@ class DockerSpawner(Spawner):
         return cls._executor
 
     _client = None
+
     @property
     def client(self):
         """single global client instance"""
@@ -60,7 +64,7 @@ class DockerSpawner(Spawner):
                         client_cert=self.tls_client,
                         ca_cert=self.tls_ca,
                         verify=self.tls_verify,
-                        assert_hostname = self.tls_assert_hostname)
+                        assert_hostname=self.tls_assert_hostname)
                 else:
                     tls_config = None
                 docker_host = os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
@@ -106,18 +110,17 @@ class DockerSpawner(Spawner):
         )
     )
 
-
-
-    use_docker_client_env = Bool(False, config=True, help="If True, will use Docker client env variable (boot2docker friendly)")
+    use_docker_client_env = Bool(False, config=True,
+                                 help="If True, will use Docker client env variable (boot2docker friendly)")
     tls = Bool(False, config=True, help="If True, connect to docker with --tls")
     tls_verify = Bool(False, config=True, help="If True, connect to docker with --tlsverify")
     tls_ca = Unicode("", config=True, help="Path to CA certificate for docker TLS")
     tls_cert = Unicode("", config=True, help="Path to client certificate for docker TLS")
     tls_key = Unicode("", config=True, help="Path to client key for docker TLS")
     tls_assert_hostname = UnicodeOrFalse(default_value=None, allow_none=True,
-        config=True,
-        help="If False, do not verify hostname of docker daemon",
-    )
+                                         config=True,
+                                         help="If False, do not verify hostname of docker daemon",
+                                         )
 
     remove_containers = Bool(False, config=True, help="If True, delete containers after they are stopped.")
     extra_create_kwargs = Dict(config=True, help="Additional args to pass for container create")
@@ -230,22 +233,23 @@ class DockerSpawner(Spawner):
         volumes = {
             key.format(username=self.user.name): {'bind': value.format(username=self.user.name), 'ro': False}
             for key, value in self.volumes.items()
-        }
+            }
         ro_volumes = {
             key.format(username=self.user.name): {'bind': value.format(username=self.user.name), 'ro': True}
             for key, value in self.read_only_volumes.items()
-        }
+            }
         volumes.update(ro_volumes)
         return volumes
 
     _escaped_name = None
+
     @property
     def escaped_name(self):
         if self._escaped_name is None:
             self._escaped_name = escape(self.user.name,
-                safe=self._container_safe_chars,
-                escape_char=self._container_escape_char,
-            )
+                                        safe=self._container_safe_chars,
+                                        escape_char=self._container_escape_char,
+                                        )
         return self._escaped_name
 
     @property
@@ -266,9 +270,9 @@ class DockerSpawner(Spawner):
         proto, path = self.hub.api_url.split('://', 1)
         ip, rest = path.split(':', 1)
         return '{proto}://{ip}:{rest}'.format(
-            proto = proto,
-            ip = self.hub_ip_connect,
-            rest = rest
+            proto=proto,
+            ip=self.hub_ip_connect,
+            rest=rest
         )
 
     def _env_keep_default(self):
@@ -293,9 +297,9 @@ class DockerSpawner(Spawner):
         ))
 
         if self.hub_ip_connect:
-           hub_api_url = self._public_hub_api_url()
+            hub_api_url = self._public_hub_api_url()
         else:
-           hub_api_url = self.hub.api_url
+            hub_api_url = self.hub.api_url
         env['JPY_HUB_API_URL'] = hub_api_url
 
         return env
@@ -364,7 +368,7 @@ class DockerSpawner(Spawner):
 
     @gen.coroutine
     def start(self, image=None, extra_create_kwargs=None,
-        extra_start_kwargs=None, extra_host_config=None):
+              extra_start_kwargs=None, extra_host_config=None):
         """Start the single-user server in a docker container. You can override
         the default parameters passed to `create_container` through the
         `extra_create_kwargs` dictionary and passed to `start` through the
@@ -376,6 +380,7 @@ class DockerSpawner(Spawner):
         `extra_host_config` take precedence over their global counterparts.
 
         """
+        just_created = False
         container = yield self.get_container()
         if container is None:
             image = image or self.container_image
@@ -414,6 +419,7 @@ class DockerSpawner(Spawner):
                 "Created container '%s' (id: %s) from image %s",
                 self.container_name, self.container_id[:7], image)
 
+            self._allow_user_to_write_to_volume_binds()
         else:
             self.log.info(
                 "Found existing container '%s' (id: %s)",
@@ -436,6 +442,15 @@ class DockerSpawner(Spawner):
         ip, port = yield from self.get_ip_and_port()
         self.user.server.ip = ip
         self.user.server.port = port
+
+    def _allow_user_to_write_to_volume_binds(self):
+        for key in self.volume_binds.keys():
+            path = str(key)
+            os.makedirs(path, 0o755)
+            mode = os.stat(path).st_mode
+            mode |= (mode & 0o777) >> 2
+            os.chmod(path, mode)
+        self.log.info("Set permissions on folders to allow user {} access".format(self.user.name))
 
     def get_ip_and_port(self):
         if self.use_internal_ip:

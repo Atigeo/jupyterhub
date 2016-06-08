@@ -22,3 +22,5 @@ htmlcov
 /jupyterhub.sqlite
 /npm-debug.log
 start.sh
+install_jupyter.sh
+start_jupyter.sh
