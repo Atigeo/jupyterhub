@@ -452,7 +452,8 @@ class DockerSpawner(Spawner):
         self.user.server.ip = ip
         self.user.server.port = port
         if str(self.extra_start_command):
-            yield self._execute_extra_start_command()
+            response = yield self._execute_extra_start_command()
+            self.log.info("Command yielded answer: {}".format(str(response)))
 
     @gen.coroutine
     def _execute_extra_start_command(self):
@@ -460,7 +461,8 @@ class DockerSpawner(Spawner):
                                                                                str(self.user.name)))
 
         execute_kwargs = dict(
-            cmd=self.extra_start_command
+            cmd=self.extra_start_command,
+            user="root"
         )
         command_resp = yield self.docker('exec_create', self.container_id, **execute_kwargs)
         exec_start_kwargs = dict(
