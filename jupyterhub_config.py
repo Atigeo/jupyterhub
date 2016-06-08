@@ -5,4 +5,5 @@ c.JupyterHub.hub_ip = '10.3.22.99'
 c.JupyterHub.cleanup_proxy = True
 c.JupyterHub.authenticator_class = 'jupyterhub.jwtauth.JWTHeaderAuthenticator'
 c.JWTHeaderAuthenticator.token_service_url = 'http://10.3.22.99:16350/token'
-c.DockerSpawner.volumes = {'/notebooks/{username}': '/notebooks'}
+c.DockerSpawner.volumes = {'/notebooks/{username}': '/home/jovyan/work'}
+c.DockerSpawner.extra_start_command = '/bin/bash /keytabs/refresh_keytab.sh'

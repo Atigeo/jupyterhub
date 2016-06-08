@@ -86,6 +86,16 @@ class DockerSpawner(Spawner):
         )
     )
 
+    extra_start_command = Unicode(
+        config=True,
+        help=dedent(
+            """
+            Extra command to execute at the start of the user's container
+            image
+            """
+        )
+    )
+
     volumes = Dict(
         config=True,
         help=dedent(
@@ -380,7 +390,6 @@ class DockerSpawner(Spawner):
         `extra_host_config` take precedence over their global counterparts.
 
         """
-        just_created = False
         container = yield self.get_container()
         if container is None:
             image = image or self.container_image
@@ -442,11 +451,29 @@ class DockerSpawner(Spawner):
         ip, port = yield from self.get_ip_and_port()
         self.user.server.ip = ip
         self.user.server.port = port
+        if str(self.extra_start_command):
+            yield self._execute_extra_start_command()
+
+    @gen.coroutine
+    def _execute_extra_start_command(self):
+        self.log.info("Executing extra start command: '{}' for user {}".format(str(self.extra_start_command),
+                                                                               str(self.user.name)))
+
+        execute_kwargs = dict(
+            cmd=self.extra_start_command
+        )
+        command_resp = yield self.docker('exec_create', self.container_id, **execute_kwargs)
+        exec_start_kwargs = dict(
+            exec_id=command_resp['Id']
+        )
+        result = yield self.docker('exec_start', **exec_start_kwargs)
+        return result
 
     def _allow_user_to_write_to_volume_binds(self):
         for key in self.volume_binds.keys():
             path = str(key)
-            os.makedirs(path, 0o755)
+            if not os.path.exists(path):
+                os.makedirs(path, 0o755)
             mode = os.stat(path).st_mode
             mode |= (mode & 0o777) >> 2
             os.chmod(path, mode)
