@@ -96,6 +96,15 @@ class DockerSpawner(Spawner):
         )
     )
 
+    extra_hosts = Dict(
+        config=True,
+        help=dedent(
+            """
+            Hosts to add to the hostfiles
+            """
+        )
+    )
+
     volumes = Dict(
         config=True,
         help=dedent(
@@ -454,6 +463,37 @@ class DockerSpawner(Spawner):
         if str(self.extra_start_command):
             response = yield self._execute_extra_start_command()
             self.log.info("Command yielded answer: {}".format(str(response)))
+
+        if self.extra_hosts:
+            response = yield self._add_extra_hosts()
+            self.log.info("Extra hosts command yielded answer: {}".format(str(response)))
+
+    def _create_extra_hosts_command(self):
+        command = "printf \""
+        item_len = len(self.extra_hosts)
+        for key, value in self.extra_hosts.items():
+            if item_len == 1:
+                command += key + "\t" + value
+            else:
+                command += key + "\t" + value + "\n"
+            item_len -= 1
+        return command + "\" >> /etc/hosts"
+
+    @gen.coroutine
+    def _add_extra_hosts(self):
+        command = self._create_extra_hosts_command()
+        command = "/bin/bash -c " + "\'" + command + "\'"
+        execute_kwargs = dict(
+            cmd=command,
+            user="root"
+        )
+
+        command_resp = yield self.docker('exec_create', self.container_id, **execute_kwargs)
+        exec_start_kwargs = dict(
+            exec_id=command_resp['Id']
+        )
+        result = yield self.docker('exec_start', **exec_start_kwargs)
+        return result
 
     @gen.coroutine
     def _execute_extra_start_command(self):

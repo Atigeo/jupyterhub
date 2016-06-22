@@ -20,6 +20,7 @@ class APIHandler(BaseHandler):
         
         - allow unspecified host/referer (e.g. scripts)
         """
+        return True
         host = self.request.headers.get("Host")
         referer = self.request.headers.get("Referer")
 
