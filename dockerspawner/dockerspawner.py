@@ -86,6 +86,16 @@ class DockerSpawner(Spawner):
         )
     )
 
+    keytab_path = Unicode(
+        '/usr/local/keytabs',
+        config=True,
+        help=dedent(
+            """
+            The path to the keytabs in the container
+            """
+        )
+    )
+
     extra_start_command = Unicode(
         config=True,
         help=dedent(
@@ -258,6 +268,9 @@ class DockerSpawner(Spawner):
             for key, value in self.read_only_volumes.items()
             }
         volumes.update(ro_volumes)
+        if self.keytab_path:
+            keytab_path_volume = {self.keytab_path: {'bind': self.keytab_path, 'ro': False}}
+            volumes.update(keytab_path_volume)
         return volumes
 
     _escaped_name = None
@@ -460,13 +473,24 @@ class DockerSpawner(Spawner):
         ip, port = yield from self.get_ip_and_port()
         self.user.server.ip = ip
         self.user.server.port = port
+
+        yield self.custom_init_container()
+
+    @gen.coroutine
+    def custom_init_container(self):
         if str(self.extra_start_command):
-            response = yield self._execute_extra_start_command()
+            response = yield self.execute_command_in_container(dedent(self.extra_start_command), 'root')
             self.log.info("Command yielded answer: {}".format(str(response)))
 
         if self.extra_hosts:
             response = yield self._add_extra_hosts()
             self.log.info("Extra hosts command yielded answer: {}".format(str(response)))
+
+        if self.keytab_path:
+            response = yield self.execute_command_in_container('chmod 500 ' + str(self.keytab_path), 'root')
+            response += yield self.execute_command_in_container(
+                '/bin/bash ' + str(self.keytab_path) + '/refresh_keytab.sh', 'root')
+            self.log.info("Keytab path restriction and init commands yielded: {}".format(str(response)))
 
     def _create_extra_hosts_command(self):
         command = "printf \""
@@ -483,26 +507,16 @@ class DockerSpawner(Spawner):
     def _add_extra_hosts(self):
         command = self._create_extra_hosts_command()
         command = "/bin/bash -c " + "\'" + command + "\'"
-        execute_kwargs = dict(
-            cmd=command,
-            user="root"
-        )
-
-        command_resp = yield self.docker('exec_create', self.container_id, **execute_kwargs)
-        exec_start_kwargs = dict(
-            exec_id=command_resp['Id']
-        )
-        result = yield self.docker('exec_start', **exec_start_kwargs)
+        result = yield self.execute_command_in_container(command, 'root')
         return result
 
     @gen.coroutine
-    def _execute_extra_start_command(self):
-        self.log.info("Executing extra start command: '{}' for user {}".format(str(self.extra_start_command),
-                                                                               str(self.user.name)))
+    def execute_command_in_container(self, command, as_user):
+        self.log.info("Executing command: '{}' for user {}".format(str(command), str(self.user.name)))
 
         execute_kwargs = dict(
-            cmd=self.extra_start_command,
-            user="root"
+            cmd=command,
+            user=as_user
         )
         command_resp = yield self.docker('exec_create', self.container_id, **execute_kwargs)
         exec_start_kwargs = dict(
@@ -514,11 +528,13 @@ class DockerSpawner(Spawner):
     def _allow_user_to_write_to_volume_binds(self):
         for key in self.volume_binds.keys():
             path = str(key)
-            if not os.path.exists(path):
-                os.makedirs(path, 0o755)
-            mode = os.stat(path).st_mode
-            mode |= (mode & 0o777) >> 2
-            os.chmod(path, mode)
+            if path != self.keytab_path:
+                if not os.path.exists(path):
+                    os.makedirs(path, 0o755)
+                mode = os.stat(path).st_mode
+                mode |= (mode & 0o777) >> 2
+                os.chmod(path, mode)
+
         self.log.info("Set permissions on folders to allow user {} access".format(self.user.name))
 
     def get_ip_and_port(self):
