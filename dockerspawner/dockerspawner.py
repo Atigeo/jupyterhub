@@ -487,8 +487,7 @@ class DockerSpawner(Spawner):
             self.log.info("Extra hosts command yielded answer: {}".format(str(response)))
 
         if self.keytab_path:
-            response = yield self.execute_command_in_container('chmod 500 ' + str(self.keytab_path), 'root')
-            response += yield self.execute_command_in_container(
+            response = yield self.execute_command_in_container(
                 '/bin/bash ' + str(self.keytab_path) + '/refresh_keytab.sh', 'root')
             self.log.info("Keytab path restriction and init commands yielded: {}".format(str(response)))
 

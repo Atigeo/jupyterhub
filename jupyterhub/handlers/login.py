@@ -8,9 +8,13 @@ from tornado import gen
 
 from .base import BaseHandler
 
+from traitlets import Unicode
+from traitlets.config import LoggingConfigurable
+
 
 class LogoutHandler(BaseHandler):
     """Log a user out by clearing their login cookie."""
+
     def get(self):
         user = self.get_current_user()
         self.clear_login_cookie()
@@ -22,17 +26,35 @@ class LogoutHandler(BaseHandler):
         self.redirect(self.hub.server.base_url, permanent=False)
 
 
+class XPatternsLogoutHandler(BaseHandler):
+    """Log a user out by clearing their login cookie."""
+
+    def get(self):
+        print(type(self.authenticator))
+        user = self.get_current_user()
+        self.clear_login_cookie()
+        print('Extra logout: ' + self.authenticator.extra_logout_location)
+        if user:
+            self.log.info("User logged out: %s", user.name)
+            for name in user.other_user_cookies:
+                self.clear_login_cookie(name)
+            user.other_user_cookies = set([])
+
+        self.redirect('https://' + self.get_cookie(self.authenticator.xpatterns_cookie_name) +
+                      self.authenticator.extra_logout_location, permanent=True)
+
+
 class LoginHandler(BaseHandler):
     """Render the login page."""
 
     def _render(self, login_error=None, username=None):
         return self.render_template('login.html',
-                next=url_escape(self.get_argument('next', default='')),
-                username=username,
-                login_error=login_error,
-                custom_html=self.authenticator.custom_html,
-                login_url=self.settings['login_url']
-        )
+                                    next=url_escape(self.get_argument('next', default='')),
+                                    username=username,
+                                    login_error=login_error,
+                                    custom_html=self.authenticator.custom_html,
+                                    login_url=self.settings['login_url']
+                                    )
 
     def get(self):
         next_url = self.get_argument('next', '')
@@ -61,7 +83,7 @@ class LoginHandler(BaseHandler):
         for arg in self.request.arguments:
             data[arg] = self.get_argument(arg)
         self.log.info('I am getting a post, proceeding to verify user... ')
-        #self.log.info('I am currently receiving this: %s %s', data['username'], data['password'])
+        # self.log.info('I am currently receiving this: %s %s', data['username'], data['password'])
         username = yield self.authenticate(data)
         self.log.info('After auth, i got: ' + str(username) if username else 0)
         if username:
@@ -89,7 +111,6 @@ class LoginHandler(BaseHandler):
 
 
 class JWTLoginHandler(LoginHandler):
-
     def _render(self, login_error=None, username=None):
         return self.render_template('login.html',
                                     next=url_escape(self.get_argument('next', default='')),
@@ -122,7 +143,7 @@ class JWTLoginHandler(LoginHandler):
             split_token = auth_header.split(' ')
 
             if len(split_token) == 2 and split_token[0] == 'Bearer' and \
-                    (split_token[1] is not '' or split_token[1] is not ' ') :
+                    (split_token[1] is not '' or split_token[1] is not ' '):
                 token = split_token[1]
                 self.log.info('Current bearer: ' + token)
                 res = yield self._authenticate_with_jwt(token)
@@ -184,5 +205,5 @@ class JWTLoginHandler(LoginHandler):
 # /logout clears cookies.
 default_handlers = [
     (r"/login", LoginHandler),
-    (r"/logout", LogoutHandler),
+    (r"/logout", XPatternsLogoutHandler),
 ]

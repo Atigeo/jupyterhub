@@ -4,7 +4,7 @@ c.DockerSpawner.hub_ip_connect = '10.3.22.99'
 c.JupyterHub.hub_ip = '10.3.22.99'
 c.JupyterHub.cleanup_proxy = True
 c.JupyterHub.authenticator_class = 'jupyterhub.jwtauth.JWTHeaderAuthenticator'
-c.JWTHeaderAuthenticator.token_service_url = 'http://10.3.22.99:16350/token'
+#c.JWTHeaderAuthenticator.token_service_url = 'http://10.3.22.99:16350/token'
 c.DockerSpawner.volumes = {'/notebooks/{username}': '/home/jovyan/work'}
 
 c.DockerSpawner.keytab_path = '/usr/local/keytabs'
@@ -17,7 +17,8 @@ c.Spawner.environment = {'XPATTERNS_KEYTAB_PATH': c.DockerSpawner.keytab_path + 
                          'KRB_SERVER': '10.0.2.181',
                          'TOKEN_URL': 'http://10.0.2.197:16350',
                          'CONFIG_URL': 'http://10.0.2.197:7070/configuration/v1'}
-
+c.JWTHeaderAuthenticator.extra_logout_location = '/pkmslogout'
+c.JWTHeaderAuthenticator.xpatterns_cookie_name = 'xpatternsLink'
 c.DockerSpawner.extra_hosts = {
     '10.0.2.197': 'xpatterns-admin	xpatterns-foundation xpatterns-workflow xpatterns-rabbitmq connect.staging.xpatterns.com xpatterns-ingestion',
     '54.201.104.32': 'docker.staging.xpatterns.com',
@@ -47,7 +48,7 @@ c.JupyterHub.base_url = '/jupyter'
 # c.DockerSpawner.extra_host_config = {'network_mode': 'host'}
 # c.DockerSpawner.network_name = 'host'
 # Set the log level by value or name.
-c.JupyterHub.log_level = 'DEBUG'
+#c.JupyterHub.log_level = 'DEBUG'
 
 # Enable debug-logging of the single-user server
 c.Spawner.debug = True

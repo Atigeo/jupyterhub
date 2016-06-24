@@ -16,6 +16,9 @@ class JWTHeaderAuthenticator(Authenticator):
     token_service_url = Unicode('',
                                 config=True)
 
+    extra_logout_location = Unicode('', config=True)
+    xpatterns_cookie_name = Unicode('', config=True)
+
     #audience = Unicode('#/connect', config=True)
     audience = ''
 
