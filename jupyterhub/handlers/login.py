@@ -5,7 +5,7 @@
 
 from tornado.escape import url_escape
 from tornado import gen
-
+import datetime
 from .base import BaseHandler
 
 from traitlets import Unicode
@@ -29,20 +29,29 @@ class LogoutHandler(BaseHandler):
 class XPatternsLogoutHandler(BaseHandler):
     """Log a user out by clearing their login cookie."""
 
+    @gen.coroutine
     def get(self):
         print(type(self.authenticator))
         user = self.get_current_user()
         self.clear_login_cookie()
         print('Extra logout: ' + self.authenticator.extra_logout_location)
+        cookie_value = None
         if user:
             self.log.info("User logged out: %s", user.name)
             for name in user.other_user_cookies:
                 self.clear_login_cookie(name)
             user.other_user_cookies = set([])
+            cookie_value = self.get_cookie(self.authenticator.xpatterns_cookie_name)
+            self.clear_cookie('Authorization')
+            self.clear_header('Authorization')
+            if user.running:
+                yield self.stop_single_user(user)
 
-        self.redirect('https://' + self.get_cookie(self.authenticator.xpatterns_cookie_name) +
-                      self.authenticator.extra_logout_location, permanent=True)
-
+        if cookie_value is not None:
+            self.redirect('https://' + cookie_value +
+                          self.authenticator.extra_logout_location, permanent=True)
+        else:
+            self.redirect(self.hub.server.base_url, permanent=False)
 
 class LoginHandler(BaseHandler):
     """Render the login page."""

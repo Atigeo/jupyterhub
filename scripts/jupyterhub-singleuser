@@ -5,6 +5,7 @@
 # Distributed under the terms of the Modified BSD License.
 
 import os
+
 try:
     from urllib.parse import quote
 except ImportError:
@@ -47,7 +48,7 @@ class JupyterHubLoginHandler(LoginHandler):
     @staticmethod
     def login_available(settings):
         return True
-    
+
     @staticmethod
     def verify_token(self, cookie_name, encrypted_cookie):
         """method for token verification"""
@@ -55,18 +56,19 @@ class JupyterHubLoginHandler(LoginHandler):
         if encrypted_cookie in cookie_cache:
             # we've seen this token before, don't ask upstream again
             return cookie_cache[encrypted_cookie]
-    
+
         hub_api_url = self.settings['hub_api_url']
         hub_api_key = self.settings['hub_api_key']
         r = requests.get(url_path_join(
             hub_api_url, "authorizations/cookie", cookie_name, quote(encrypted_cookie, safe=''),
         ),
-            headers = {'Authorization' : 'token %s' % hub_api_key},
+            headers={'Authorization': 'token %s' % hub_api_key},
         )
         if r.status_code == 404:
             data = None
         elif r.status_code == 403:
-            self.log.error("I don't have permission to verify cookies, my auth token may have expired: [%i] %s", r.status_code, r.reason)
+            self.log.error("I don't have permission to verify cookies, my auth token may have expired: [%i] %s",
+                           r.status_code, r.reason)
             raise HTTPError(500, "Permission failure checking authorization, I may need to be restarted")
         elif r.status_code >= 500:
             self.log.error("Upstream failure verifying auth token: [%i] %s", r.status_code, r.reason)
@@ -109,8 +111,11 @@ class JupyterHubLoginHandler(LoginHandler):
             self.log.debug("No token cookie")
             return None
 
+
 class JupyterHubLogoutHandler(LogoutHandler):
     def get(self):
+        print('Redirecting to: ' + str(self.settings['hub_host'] +
+                                       url_path_join(self.settings['hub_prefix'], 'logout')))
         self.redirect(
             self.settings['hub_host'] +
             url_path_join(self.settings['hub_prefix'], 'logout'))
@@ -119,7 +124,7 @@ class JupyterHubLogoutHandler(LogoutHandler):
 # register new hub related command-line aliases
 aliases = dict(notebook_aliases)
 aliases.update({
-    'user' : 'SingleUserNotebookApp.user',
+    'user': 'SingleUserNotebookApp.user',
     'cookie-name': 'SingleUserNotebookApp.cookie_name',
     'hub-prefix': 'SingleUserNotebookApp.hub_prefix',
     'hub-host': 'SingleUserNotebookApp.hub_host',
@@ -129,10 +134,10 @@ aliases.update({
 flags = dict(notebook_flags)
 flags.update({
     'disable-user-config': ({
-        'SingleUserNotebookApp': {
-            'disable_user_config': True
-        }
-    }, "Disable user-controlled configuration of the notebook server.")
+                                'SingleUserNotebookApp': {
+                                    'disable_user_config': True
+                                }
+                            }, "Disable user-controlled configuration of the notebook server.")
 })
 
 page_template = """
@@ -140,7 +145,11 @@ page_template = """
 
 {% block header_buttons %}
 {{super()}}
-
+<a href='{{hub_logout_url}}'
+ class='btn btn-default btn-sm navbar-btn pull-right'
+ style='margin-right: 4px; margin-left: 2px;'
+>
+Logout</a>
 <a href='{{hub_control_panel_url}}'
  class='btn btn-default btn-sm navbar-btn pull-right'
  style='margin-right: 4px; margin-left: 2px;'
@@ -152,6 +161,7 @@ Control Panel</a>
 {% endblock logo %}
 """
 
+
 def _exclude_home(path_list):
     """Filter out any entries in a path list that are in my home directory.
 
@@ -162,11 +172,14 @@ def _exclude_home(path_list):
         if not p.startswith(home):
             yield p
 
+
 class SingleUserNotebookApp(NotebookApp):
     """A Subclass of the regular NotebookApp that is aware of the parent multiuser context."""
     user = CUnicode(config=True)
+
     def _user_changed(self, name, old, new):
         self.log.name = new
+
     cookie_name = Unicode(config=True)
     hub_prefix = Unicode(config=True)
     hub_host = Unicode(config=True)
@@ -177,15 +190,15 @@ class SingleUserNotebookApp(NotebookApp):
     trust_xheaders = True
     login_handler_class = JupyterHubLoginHandler
     logout_handler_class = JupyterHubLogoutHandler
-    port_retries = 0 # disable port-retries, since the Spawner will tell us what port to use
+    port_retries = 0  # disable port-retries, since the Spawner will tell us what port to use
 
     disable_user_config = Bool(False, config=True,
-        help="""Disable user configuration of single-user server.
+                               help="""Disable user configuration of single-user server.
 
         Prevents user-writable files that normally configure the single-user server
         from being loaded, ensuring admins have full control of configuration.
         """
-    )
+                               )
 
     cookie_cache_lifetime = Integer(
         config=True,
@@ -212,37 +225,37 @@ class SingleUserNotebookApp(NotebookApp):
     def _clear_cookie_cache(self):
         self.log.debug("Clearing cookie cache")
         self.tornado_settings['cookie_cache'].clear()
-    
+
     def migrate_config(self):
         if self.disable_user_config:
             # disable config-migration when user config is disabled
             return
         else:
             super(SingleUserNotebookApp, self).migrate_config()
-    
+
     @property
     def config_file_paths(self):
         path = super(SingleUserNotebookApp, self).config_file_paths
-        
+
         if self.disable_user_config:
             # filter out user-writable config dirs if user config is disabled
             path = list(_exclude_home(path))
         return path
-    
+
     @property
     def nbextensions_path(self):
         path = super(SingleUserNotebookApp, self).nbextensions_path
-        
+
         if self.disable_user_config:
             path = list(_exclude_home(path))
         return path
-    
+
     def _static_custom_path_default(self):
         path = super(SingleUserNotebookApp, self)._static_custom_path_default()
         if self.disable_user_config:
             path = list(_exclude_home(path))
         return path
-    
+
     def start(self):
         # Start a PeriodicCallback to clear cached cookies.  This forces us to
         # revalidate our user with the Hub at least every
@@ -253,7 +266,7 @@ class SingleUserNotebookApp(NotebookApp):
                 self.cookie_cache_lifetime * 1e3,
             ).start()
         super(SingleUserNotebookApp, self).start()
-    
+
     def init_webapp(self):
         # load the hub related settings into the tornado settings dict
         env = os.environ
@@ -267,25 +280,27 @@ class SingleUserNotebookApp(NotebookApp):
         s['login_url'] = self.hub_host + self.hub_prefix
         s['hub_api_url'] = self.hub_api_url
         s['csp_report_uri'] = self.hub_host + url_path_join(self.hub_prefix, 'security/csp-report')
-        #kerberos token
-        #s['XPATTERNS_JWT_TOKEN'] = env.pop('XPATTERNS_JWT_TOKEN')
+        # kerberos token
+        # s['XPATTERNS_JWT_TOKEN'] = env.pop('XPATTERNS_JWT_TOKEN')
         super(SingleUserNotebookApp, self).init_webapp()
         self.patch_templates()
-    
+
     def patch_templates(self):
         """Patch page templates to add Hub-related buttons"""
-        
+
         self.jinja_template_vars['logo_url'] = self.hub_host + url_path_join(self.hub_prefix, 'logo')
         env = self.web_app.settings['jinja2_env']
-        
+
         env.globals['hub_control_panel_url'] = \
             self.hub_host + url_path_join(self.hub_prefix, 'home')
-        
+        env.globals['hub_logout_url'] = \
+            self.hub_host + url_path_join(self.hub_prefix, 'logout')
+
         # patch jinja env loading to modify page template
         def get_page(name):
             if name == 'page.html':
                 return page_template
-        
+
         orig_loader = env.loader
         env.loader = ChoiceLoader([
             FunctionLoader(get_page),
