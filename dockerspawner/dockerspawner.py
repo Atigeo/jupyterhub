@@ -88,7 +88,6 @@ class DockerSpawner(Spawner):
     )
 
     keytab_path = Unicode(
-        '/usr/local/keytabs',
         config=True,
         help=dedent(
             """
