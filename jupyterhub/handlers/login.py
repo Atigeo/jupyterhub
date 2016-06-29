@@ -52,6 +52,7 @@ class XPatternsLogoutHandler(BaseHandler):
         else:
             self.redirect(self.hub.server.base_url, permanent=False)
 
+
 class LoginHandler(BaseHandler):
     """Render the login page."""
 
