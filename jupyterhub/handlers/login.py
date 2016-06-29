@@ -43,7 +43,6 @@ class XPatternsLogoutHandler(BaseHandler):
             user.other_user_cookies = set([])
             cookie_value = self.get_cookie(self.authenticator.xpatterns_cookie_name)
             self.clear_cookie('Authorization')
-            self.clear_header('Authorization')
             if user.running:
                 yield self.stop_single_user(user)
 

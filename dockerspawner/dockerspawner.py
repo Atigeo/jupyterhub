@@ -20,6 +20,7 @@ from traitlets import (
     Unicode,
     Bool,
 )
+import subprocess
 
 import stat
 
@@ -102,6 +103,15 @@ class DockerSpawner(Spawner):
             """
             Extra command to execute at the start of the user's container
             image
+            """
+        )
+    )
+
+    extra_system_start_command = Unicode(
+        config=True,
+        help=dedent(
+            """
+            Extra command to execute on a system when spawning a new container
             """
         )
     )
@@ -490,6 +500,10 @@ class DockerSpawner(Spawner):
             response = yield self.execute_command_in_container(
                 '/bin/bash ' + str(self.keytab_path) + '/refresh_keytab.sh', 'root')
             self.log.info("Keytab path restriction and init commands yielded: {}".format(str(response)))
+        if self.extra_system_start_command:
+            process = subprocess.Popen(str(self.extra_system_start_command).split(), stdout=subprocess.PIPE)
+            output = process.communicate()[0]
+            self.log.info("Extra system start command result: " + str(output))
 
     def _create_extra_hosts_command(self):
         command = "printf \""

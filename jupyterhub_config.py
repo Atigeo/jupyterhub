@@ -7,8 +7,10 @@ c.JupyterHub.authenticator_class = 'jupyterhub.jwtauth.JWTHeaderAuthenticator'
 #c.JWTHeaderAuthenticator.token_service_url = 'http://10.3.22.99:16350/token'
 c.DockerSpawner.volumes = {'/notebooks/{username}': '/home/jovyan/work'}
 
-c.DockerSpawner.keytab_path = '/usr/local/keytabs'
+#c.DockerSpawner.keytab_path = '/usr/local/keytabs'
 c.DockerSpawner.extra_start_command = '/bin/bash /usr/local/init_container.sh'
+REFRESH_KEYTABS_PATH='/usr/local/xpatterns/jupyter-hub/refresh_jupyter_keytabs.sh'
+c.DockerSpawner.extra_system_start_command = '/bin/bash ' + REFRESH_KEYTABS_PATH
 
 c.Spawner.environment = {'XPATTERNS_KEYTAB_PATH': c.DockerSpawner.keytab_path + '/alinb.keytab',
                          'XPATTERNS_KEYTAB_REFRESH_PATH': c.DockerSpawner.keytab_path + '/refresh_keytab.sh',
