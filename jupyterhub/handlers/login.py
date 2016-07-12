@@ -29,6 +29,10 @@ class LogoutHandler(BaseHandler):
 class XPatternsLogoutHandler(BaseHandler):
     """Log a user out by clearing their login cookie."""
 
+    def get_cookie_domain(self):
+        url = self.request.host
+        return '.' + '.'.join(url.split(':')[0].split('.')[1:])
+
     @gen.coroutine
     def get(self):
         print(type(self.authenticator))
@@ -43,6 +47,10 @@ class XPatternsLogoutHandler(BaseHandler):
             user.other_user_cookies = set([])
             cookie_value = self.get_cookie(self.authenticator.xpatterns_cookie_name)
             self.clear_cookie('Authorization')
+
+            # Get the domain and clear the auth cookie
+            cookie_domain = self.get_cookie_domain()
+            self.clear_cookie(name='Authorization', domain=cookie_domain)
             if user.running:
                 yield self.stop_single_user(user)
 
