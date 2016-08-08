@@ -337,6 +337,9 @@ class DockerSpawner(Spawner):
 
         ))
 
+        if self.notebook_dir:
+            env['NOTEBOOK_DIR'] = self.notebook_dir
+
         if self.hub_ip_connect:
             hub_api_url = self._public_hub_api_url()
         else:
