@@ -1,0 +1,100 @@
+# leave this
+c.JupyterHub.spawner_class = 'dockerspawner.dockerspawner.DockerSpawner'
+
+# generic singleuser docker
+# to specify a tag, append it after colon
+# this spawns a generic python docker
+#c.DockerSpawner.container_image = 'jupyter/singleuser'   
+
+# this spawns our own docker with xpatterns analytics
+# The 89 is a jenkins build number assigned by jenkins
+# It only runs on a cluster environment with security configured.
+c.DockerSpawner.container_image = 'docker.staging.xpatterns.com/xpatterns-analytics:89'
+
+# these need to be configured to point to the external IP of your machine
+# it is the IP of the machine where jupyterjub is installed
+#c.DockerSpawner.hub_ip_connect = '10.3.22.99'
+#c.JupyterHub.hub_ip = '10.3.22.99'
+#c.DockerSpawner.hub_ip_connect = '192.168.0.220'
+#c.JupyterHub.hub_ip = '192.168.0.220'
+c.DockerSpawner.hub_ip_connect = '192.168.12.109'
+c.JupyterHub.hub_ip = '192.168.12.109'
+
+# leave this True
+c.JupyterHub.cleanup_proxy = True
+# leave this as-is
+c.JupyterHub.authenticator_class = 'jupyterhub.jwtauth.JWTHeaderAuthenticator'
+
+# comment this out for now, when running in development
+# Include it when actually running the token service.
+#c.JWTHeaderAuthenticator.token_service_url = 'http://10.3.22.99:16350/token'
+#c.JWTHeaderAuthenticator.token_service_url = 'http://192.168.12.109:16350/token'
+
+# this is an outside : inside pair used for notebook storage
+# username is populated from the JWT token
+# /notebooks needs to be 777 (??)  (change to be more restrictive, see what fails, change owner appropriately)
+c.DockerSpawner.volumes = {'/notebooks/{username}': '/home/jovyan/work'}
+
+#c.DockerSpawner.keytab_path = '/usr/local/keytabs'
+
+# this is executed inside the container at creation or start
+c.DockerSpawner.extra_start_command = '/bin/bash /usr/local/init_container.sh'
+
+# this is executed inside the container at creation or start
+REFRESH_KEYTABS_PATH='/usr/local/xpatterns/jupyter-hub/refresh_jupyter_keytabs.sh'
+c.DockerSpawner.extra_system_start_command = '/bin/bash ' + REFRESH_KEYTABS_PATH
+
+# KRB_SERVER is kerberos server
+# TOKEN_URL is URL of a service that refreshes the JWT tokens
+# This server is at http://git.life.atigeo.com/cristians/xpatterns-analytics-token-service
+# It must be running on the given server
+# CONFIG_UTL is the xpatterns foundation configuration service
+c.Spawner.environment = {
+                         'KRB_REALM':  'STAGING.XPATTERNS.COM',
+                         'KRB_SERVER': '10.0.2.122',
+                         'TOKEN_URL': 'http://10.0.2.228:16350',
+                         'CONFIG_URL': 'http://10.0.2.228:7070/configuration/v1'}
+
+# don't need to change these
+# comment out when doing development locally -- they will log you out otherwise
+#c.JWTHeaderAuthenticator.extra_logout_location = '/pkmslogout'
+#c.JWTHeaderAuthenticator.xpatterns_cookie_name = 'xpatternsLink'
+
+# these hosts are added to /etc/hosts inside the docker when it is started
+c.DockerSpawner.extra_hosts = {
+    '10.0.2.197': 'xpatterns-admin	xpatterns-foundation xpatterns-workflow xpatterns-rabbitmq connect.staging.xpatterns.com xpatterns-ingestion',
+    '54.201.104.32': 'docker.staging.xpatterns.com',
+    '10.0.2.196': 'xpatterns-cassandra',
+    '10.0.2.70': 'scdh56-master.staging.xpatterns.com scdh56-master',
+    '10.0.2.71': 'scdh56-slave1.staging.xpatterns.com scdh56-slave1',
+    '10.0.2.72': 'scdh56-slave2.staging.xpatterns.com scdh56-slave2',
+    '10.0.2.73': 'scdh56-slave3.staging.xpatterns.com scdh56-slave3'
+}
+
+# take the last of these
+c.DockerSpawner.extra_hosts = {
+    '10.91.154.8': 'connect1.dev.ydcloud.net  connect1 xpatterns-workflow xpatterns-ingestion xpatterns-publish',
+    '10.91.154.9': 'spark-master.dev.ydcloud.net  spark-master',
+    '10.91.154.10': 'spark-slave1.dev.ydcloud.net  spark-slave1 xpatterns-cassandra',
+    '10.91.154.11': 'spark-slave2.dev.ydcloud.net  spark-slave2',
+    '10.91.154.12': 'spark-slave3.dev.ydcloud.net  spark-slave3'}
+
+# this is the last one
+c.DockerSpawner.extra_hosts = {
+    '10.0.2.228': 'xpatterns-admin xpatterns-foundation xpatterns-workflow xpatterns-rabbitmq xpatterns-sjr secluster-connect secluster-connect.xpatterns.com connect.staging.xpatterns.com xpatterns-publish xpatterns-ingestion',
+    '10.0.2.122': 'secluster-master.staging.xpatterns.com secluster-master',
+    '10.0.2.45': 'xpatterns-cassandra secluster-node1.staging.xpatterns.com secluster-node1',
+    '10.0.2.46': 'secluster-node2.staging.xpatterns.com secluster-node2',
+    '10.0.2.47': 'secluster-node3.staging.xpatterns.com secluster-node3'}
+
+# this is the service root -- do not change
+c.JupyterHub.base_url = '/jupyter'
+
+# Set the log level by value or name.
+#c.JupyterHub.log_level = 'DEBUG'
+
+# Enable debug-logging of the single-user server
+c.Spawner.debug = True
+
+# this is the secret used to decrypt the JWT token
+c.JWTHeaderAuthenticator.secret_key = 'my secret'

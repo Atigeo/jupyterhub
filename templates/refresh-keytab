@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# refreshes keytab in the xpatterns analytics docker
+
+my_user_id="$(id -u)"
+containerlist="$(docker ps  | grep jupyter- | awk '{print $1}')"
+for i in ${containerlist[@]}
+do
+   docker cp /tmp/krb5cc_$my_user_id $i:/tmp/krb5cc_1000
+   docker exec -u root $i /bin/bash -c 'chmod 400 /tmp/krb5cc_1000 && chown jovyan:users /tmp/krb5cc_1000'
+done
+
+echo "refreshed keytabs!"
