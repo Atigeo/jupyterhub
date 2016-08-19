@@ -17,7 +17,6 @@ This must be 3.3 or above
 Install docker
 --------------
     $ sudo apt-get install docker.io
-
     $ docker ps
 
 If this gives a permission error, then do the following.
@@ -27,6 +26,7 @@ If this gives a permission error, then do the following.
     $ newgrp docker
 
 Test by
+
     $ docker ps
 
 Install virtualenv
@@ -100,7 +100,6 @@ Install jupyter/singleuser
 
 Run jupyterhub
 --------------
-
     $ ~/workspaces/venv-jh/bin/jupyterhub -f ~/workspaces/jupyterhub/jupyterhub_config.py --no-ssl
 
 
@@ -217,7 +216,7 @@ Change  ```c.DockerSpawner.container_image.```
 
 Comment out the existing entry, and uncomment the entry as follows:
 
-   c.DockerSpawner.container_image = 'docker.staging.xpatterns.com/xpatterns-analytics:91'
+    c.DockerSpawner.container_image = 'docker.staging.xpatterns.com/xpatterns-analytics:91'
 
 The version number (91) is normally the latest one in Jenkins.
 
@@ -228,13 +227,11 @@ You should see a single key.
 
 Create config.properties
 ------------------------
-
     $ cd ~/workspaces/jupyterhub
     $ cp templates/config_properties bin/
 
 Create publish_configs.py
 -------------------------
-
     $ cp templates/publish_configs.py bin/
     $ chmod +x bin/publish_configs.py
 
