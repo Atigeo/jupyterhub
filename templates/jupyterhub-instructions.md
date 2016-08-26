@@ -414,7 +414,7 @@ Click on "Build With Parameters" to build it.
 
 Configure jupyterhub to use the token service
 ---------------------------------------------
-Go to julyterhub_config.py and add
+Go to jupyterhub_config.py and add
 
     c.JupyterHub.hub_ip = <your IP address>
 
