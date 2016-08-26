@@ -16,5 +16,5 @@ def publish_configs():
     headers = {"Authorization": "Bearer " + token}
 
     r = requests.post(url=url,files=files, headers=headers)
-    print url,'STATUS_CODE: ',r.status_code
+    print(url,'STATUS_CODE: ',r.status_code)
 publish_configs()
