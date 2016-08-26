@@ -188,7 +188,7 @@ Get kerberos key
 
     $ cd ~/workspaces/jupyterhub
     $ sudo cp templates/krb5.conf etc/
-    $ kinit -kt etc/jupyterhub.keytab jupyterhub
+    $ KRB5_CONFIG=etc/krb5.conf kinit -kt etc/jupyterhub.keytab jupyterhub
 
 
 
@@ -202,6 +202,11 @@ Create refresh-keytab
 Test by running bin/refresh-keytab.
 You should see ```refreshed keytabs!```
 
+Test by running klist.
+
+You should see a single key.
+
+
 Then in ```jupyterhub_config.py```, put in the path to this file in REFRESH_KEYTABS_PATH as follows:
 
     REFRESH_KEYTABS_PATH='/home/<your login>/workspaces/jupyterhub/bin/refresh-keytab'
@@ -210,6 +215,10 @@ Be sure to change the path as approppriate.
 
 Alter the config file
 ---------------------
+Pull the xpatterns-analytics docker.  Use the latest tag number.
+
+    $ docker pull docker.staging.xpatterns.com/xpatterns-analytics:91
+
 Edit ```jupyterhub_config.py```
 
 Change  ```c.DockerSpawner.container_image.```
@@ -220,24 +229,39 @@ Comment out the existing entry, and uncomment the entry as follows:
 
 The version number (91) is normally the latest one in Jenkins.
 
-Test by running klist.
-
-You should see a single key.
-
+Publish Configuration
+=====================
+This pushes configuration values up to the configuration service.
+The values come from config.properties.  Make sure these are the
+properties you want.  There are many server names and IP addresses
+in this file.
 
 Create config.properties
 ------------------------
     $ cd ~/workspaces/jupyterhub
-    $ cp templates/config_properties bin/
+    $ cp templates/config.properties bin/
 
 Create publish_configs.py
 -------------------------
     $ cp templates/publish_configs.py bin/
     $ chmod +x bin/publish_configs.py
 
+Edit publish_configs.py to put in the IP address of the connect box.
+If you are setting this up on a local dev box, it is easiest to point to
+a connect box on an existing cluster.  Be sure to connect to the appropriate
+VPN if you do this.
+
+Change CONNECT_BOX_IP as follows:
+
+    CONNECT_BOX_IP = '10.0.2.228'
+
+
 Test by running:
 
-    $ python2 publish_configs.py
+    $ cd bin
+    $ python publish_configs.py
+
+The result shoould show a status code of 200.
 
 
 If jupyterhub is still running in a window, kill it with ^C.
@@ -253,7 +277,18 @@ Browse to localhost:8000
 
 You should see an error message.
 
-Using EditThisCookie (installed above) add the cookie "Authorization" with any value inside it (make it a session cookie so it doesn't go away). Otherwise, some javascript is going to notice that you're not having an active webseal cookie and will redirect you to the logout_path in the jupyterhub_config (which is usually /pkmslogout).
+Using EditThisCookie (installed above) add the cookie "Authorization" with any value inside it (make it a
+session cookie so it doesn't go away). Otherwise, some javascript is
+going to notice that you're not having an active webseal cookie and will
+redirect you to the logout_path in the jupyterhub_config (which is usually
+/pkmslogout).
+
+## Troubleshooting
+If the server gets an exception trying to index a string with the index 'username'
+that can mean that the authenticator class is incorrect.  This can happen when
+the config file does not load correctly.  Check the pathname in the -f argument of jupyterhub.
+
+## What is this ??
 
     name: jupyter-hub-token-datas1
     value: 2|1:0|10:1470319260|24:jupyter-hub-token-datas1|44:ZTI0YmVhN2E4YjNhNDc2YWEyMmU2ZGViMmUxN2JkZDY=|1b9ea97df512a3ace6e21b2446340d380ae85b8fb9ea91e39fc36bf27b14c924
@@ -275,16 +310,37 @@ Enter into a notebook cell and execute:
 
 You should see a single kerberos token.
 
-Run this:
+Run these smoke tests.  Run each of these in a cell.
 
-    from xpatterns.analytics.dal import DAL, HDFSSecureOperations
+## Analytics Library
+    # DAL smoke test
     d = DAL()
-    d.get_databases()
+    print d.get_databases()
+    d.close_connection()
 
+## HDFS
+    # HDFS smoke test
     hdfs = HDFSSecureOperations()
     hdfs.check_path('/')
 
+## Livy
+    # Livy smoke test
+    lv = LivyOperations()
+    print lv.execute_statement('print "hello"')
+    print lv.execute_statement(
+    """
+        import random
+        NUM_SAMPLES = 100000
+        def sample(p):
+          x, y = random.random(), random.random()
+          return 1 if x*x + y*y < 1 else 0
 
+        count = sc.parallelize(xrange(0, NUM_SAMPLES)).map(sample).reduce(lambda a, b: a + b)
+        print "Pi is roughly %f" % (4.0 * count / NUM_SAMPLES)
+    """)
+    lv.close()
+
+The code should execute without errors.
 
 
 
@@ -296,15 +352,19 @@ present a valid (but possibly expired) token from the same user.
 
     $ cd ~/workspaces
     $ virtualenv venv
-    $ source venv/bin/activate
+
 Make sure you have the (venv) prompt.
 
     $ git clone git@git.life.atigeo.com:cristians/xpatterns-analytics-token-service.git
 
-To build the docker:
+Enter the project:
 
-     $ cd ~/workspaces/xpatterns-analytics-token-service
-    $ python setup.py bdist_wheel
+    $ cd xpatterns-analytics
+    $ source setup
+
+Build the docker:
+
+    $ bin/build-docker
 
 This builds the wheel, which you can install with pip install.
 
@@ -315,26 +375,29 @@ Let's build and install the docker.
 
 Build the docker
 ----------------
-First copy the wheel into the docker dir..
+This builds a local docker.
 
-    $ cp dist/xpatterns_analytics_token_service-1.0-py2-none-any.whl docker/
-    $ cd docker
-    $ docker build -t xpatterns-token-service .
-    $ check by running "docker images"
+    $ cd ~/workspaces/xpatterns-analytics-token-service
+    $ bin/build-docker
+
+Test by running
+
+    $ docker images
 
 You should see xpatterns-analytics-token-service docker.
 
-This builds a local docker.
-
-Later on, we will have Jenkins builds the docker that you are going to deploy, and
-it assigns a build number and puts it in the docker repo.
+Later on, we will have Jenkins build the docker that you are going to
+deploy, and it assigns a build number and puts it in the docker repo.
 
 We can run the service locally using:
 
-    $ docker/docker_run_script.sh
+    $ build/run-docker
 
+Test by running
 
-Check that it is running with docker ps.
+    $ docker ps
+
+This should show a running xpatterns-token-service.
 
 Test it by calling ping:
 
@@ -342,17 +405,18 @@ Test it by calling ping:
 
 Should get pong.
 
-To build with jenkins, use
+To build with jenkins, go to
 
     http://jenkins.life.atigeo.com/job/xpatterns-token-service-docker/
 
 This does not trigger on checkin.
+Click on "Build With Parameters" to build it.
 
 Configure jupyterhub to use the token service
 ---------------------------------------------
-Go to julyterhub and add
+Go to julyterhub_config.py and add
 
-    c.JupyterHub.hub_ip = '192.168.0.220'
+    c.JupyterHub.hub_ip = <your IP address>
 
 This should the IP of the machine you are running on.
 
@@ -368,21 +432,24 @@ Troubleshooting
 Do this:
 
     $ ps aux | grep configurable-http
+```
 cchayden  2877  0.0  0.0  21292  1088 pts/24   S+   22:58   0:00 grep --color=auto configurable-http
 cchayden 25664  0.0  0.1 979528 33948 pts/23   Sl+  Aug05   0:02 node /usr/local/bin/configurable-http-proxy --ip  --port 8000 --api-ip 127.0.0.1 --api-port 8001 --default-target http://192.168.0.220:8081
-
+```
     $ kill 25664
 
 
 
 ### If notebooks are not persistent
 
-    !pwd in a notebook will give the notebook root
+Find the notebook root:
+
+    !pwd
 
 
-It should *not* be /notebooks, that is something on the outside.
+It should *not* be ```/notebooks```, that is something on the outside.
 
-It should be /home/jovyan/work.
+It should be ```/home/jovyan/work```.
 
 Make sure you configure the notebooks directory:
 
@@ -396,14 +463,16 @@ In ```jupyterhub_config.py```, add the following:
 If there are permissions problems running the DAL test in the notebook, make sure the kerberos token is valid.
 Run ```refresh-keytab```.
 
-In the notebook, run ```!klist```.
+In the notebook, run
+
+    !klist
 
 Look for a token.  If none, run ```kinit``` (as shown above).
 Check that the token is not expired.
 If it is expired, make sure ```refresh-keytab``` is configured with the 
 right pathname in ```jupyterhub_config.py``` and that it is running.
 
-Rebuild xpatterns analytics docker to add another package
+Rebuild xpatterns-analytics docker to add another package
 =========================================================
 
 Notebook users can only import packages that you have configured into it.
@@ -412,14 +481,18 @@ You may need to do this stuff before you build jupyterhub.
 
 
     $ git clone git@git.life.atigeo.com:mpa/xpatterns-analytics.git
-    $ switch to branch xpatterns6.0
-    $ cd analytics_framework
+    $ git checkout xpatterns6.0
+    $ cd xpatterns-analytics
+    $ source setup
 
 Add the new package in into setup.py.
+Open ```analytics_framework/setup.py``` and add the package name
+to the list ```install_requires```.
 
-Make sure you are in 2.7 virtual environment. (source venv/bin/activate)
+Make sure you are in 2.7 virtual environment. (prompt: (venv)).
+Then build the wheel.
 
-    $ python setup.py bdist_wheel
+    $ bin/build-wheel
 
 
 If this fails, you might need to add to the virtual environment venv.
@@ -436,23 +509,22 @@ If this fails, you might need to add to the virtual environment venv.
 
 Build the docker
 ----------------
-First copy the wheel to the docker directory.
+    $ bin/build-docker
 
-    $ cp dist/xpatterns_analytics-1.1-py2-none-any.whl ../docker
-    $ cd ../docker
-    $ docker build -t xpatterns-analytics .
-    $ check by running "docker images"
+Check by running
+
+    $ docker images
 
 You should see xpatterns-analytics.
 
-Jenkins now builds the docker when you push to got.
+Jenkins builds the docker when you push to git.
 
-Make sure you are in venv-jh.
+Make sure you are in venv.
 
-If necessary, create a windows and do:
+If necessary, create a window and do:
 
-    $ cd ~workspaces
-    $ source venv-jh/bin/activate
+    $ cd ~workspaces/xpatterns-analytics
+    $ source setup
 
 
 Edit ```jupyterhub_config.py``` to use the local xpatterns-analytics docker.
@@ -461,11 +533,11 @@ Edit ```jupyterhub_config.py``` to use the local xpatterns-analytics docker.
 
 Make sure the token server is running.
 
-Make sure there is no left over jupyterhub process.
+Make sure there is no leftover jupyterhub process.
 
     $ docker ps -a
 
-Look for a process */xpatterns-analytics:*
+Look for a process ```*/xpatterns-analytics:*```
 If there is one, kill it with ```docker rm <container id>```.
 
 Then run jupyterhub:

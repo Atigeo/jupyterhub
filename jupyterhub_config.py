@@ -1,17 +1,26 @@
 # The connect server is used in several places.
 # It is the server that is running jupyterhub
-#connect_server = '192.168.0.220' 
-connect_server = '192.168.12.109'
+#
+# secluster
+#connect_server = '192.168.0.228'
+#
+# running locally -- use your own IP address
+connect_server = '192.168.12.128'
+
 
 c.JupyterHub.spawner_class = 'dockerspawner.dockerspawner.DockerSpawner'
+
+# Use one of these three dockers
+
 # generic singleuser docker
-# to specify a tag, append it after colon
-#c.DockerSpawner.container_image = 'jupyter/singleuser'   
+#c.DockerSpawner.container_image = 'jupyter/singleuser'
 
 # the xpatterns-analytcs version from the docker repo
 c.DockerSpawner.container_image = 'docker.staging.xpatterns.com/xpatterns-analytics:91'
+
 # local build of xpatterns-analytics
 #c.DockerSpawner.container_image = 'xpatterns-analytics'
+
 
 # the next two are normally the same
 # it is the IP of the machine where jupyterjub is installed
@@ -39,8 +48,9 @@ c.DockerSpawner.volumes = {'/notebooks/{username}': c.Spawner.notebook_dir}
 # this is executed inside the container at creation or start
 c.DockerSpawner.extra_start_command = '/bin/bash /usr/local/init_container.sh'
 
-# this is executed inside the container at creation or start
-REFRESH_KEYTABS_PATH='/home/charlesh/workspaces/jupyterhub/bin/refresh-keytab'
+# this is executed outside the container at creation or start.
+# The pathnames are relative to the outside.
+REFRESH_KEYTABS_PATH='/home/cchayden/workspaces/jupyterhub/bin/refresh-keytab'
 c.DockerSpawner.extra_system_start_command = '/bin/bash ' + REFRESH_KEYTABS_PATH
 
 # These settings define how the application interacts with kerberos.

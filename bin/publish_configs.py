@@ -6,7 +6,8 @@
 # Go to jwt.io and make a new token, then paste it here.
 # See also the use of the Authorization header to make a request with JWT token.
 
-CONNECT_BOX_IP = '10.91.154.60'
+#CONNECT_BOX_IP = '10.91.154.60'
+CONNECT_BOX_IP = '10.0.2.228'
 CONFIG_SERVICE_URL = 'http://'+ CONNECT_BOX_IP + ':7070/configuration/v1'
 token = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkYXRhczEiLCJpdi11c2VyIjoiZGF0YXMxIiwiaXYtZ3JvdXBzIjoiXCJhZG1pblwiLFwiaGVhbHRoY2FyZVwiIiwiaXNzIjoieFBhdHRlcm5zIiwiYWRtaW4iOnRydWV9.ix_79jYQbWxYgCYLg8H2Ab5GShmpXudD6YOEDG3Z-g0'
 import requests
