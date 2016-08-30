@@ -317,11 +317,21 @@ Run these smoke tests.  Run each of these in a cell.
     d = DAL()
     print d.get_databases()
     d.close_connection()
+    
+Expected output:
+```
+['atigeo', 'audit', 'dataa1chestie', 'default', 'delta', 'demo', 'dictionaries', 'qa_db', 'rbi', 'sample_hive', 'test', 'test_hue_deployment', 'testcosmin', 'testcosmin2', 'testcristis', 'tpcds_bin_partitioned_orc_10', 'tpcds_text_10', 'uci', 'usecasedb']
+```
 
 ## HDFS
     # HDFS smoke test
     hdfs = HDFSSecureOperations()
     hdfs.check_path('/')
+    
+Expected output:
+```
+True
+```
 
 ## Livy
     # Livy smoke test
@@ -340,7 +350,56 @@ Run these smoke tests.  Run each of these in a cell.
     """)
     lv.close()
 
-The code should execute without errors.
+Expected output:
+```
+{u'status': u'ok', u'execution_count': 1, u'data': {u'text/plain': u'hello'}}
+{u'status': u'ok', u'execution_count': 2, u'data': {u'text/plain': u'Pi is roughly 3.156640'}}
+In [4]:
+
+```
+
+Troubleshooting
+---------------
+
+### Server State Dead
+If you get an error creating ```LivyOperations``` and you see a message
+indicating that the server state is "dead" then you need to investigate
+the xpatterns-livy service.
+
+Log in to the connect server and get the logs:
+
+    $ docker logs xpatterns-livy
+    
+You might see an error backtrace in the logs.
+
+If you see a permittions message about accessing '/user' then this
+is talking about a permissions problem in hdfs.  If, for instance, you are
+logged in to the xpatterns console as xiengineer, then the error message
+would refer to permissions for user 'xiengineer'.  
+
+Check the hadoop permissions:
+
+    $ hadoop fs -ls /user
+    
+If you do not see a directory for 'xiengineer', then you need to make one.
+
+    $ hadoop fs -mkdir /user/xiengineer
+    $ hadoop fs -chown xiengineer /user/xiengineer
+    
+Also check that the permissions for the new directory is 750.
+
+
+### Connection Error
+If you get an error creating LivyOperations with a ConnectionError for
+trying to rech port 8998, this means that the livy server is not running.
+
+If the docker is stopped (if you see it with ```docker ps -a`) then you can simply
+start if (```docker start xpatterns-livy```).
+
+If not, you can restart using the normal start mechanism.
+
+    $ cd /opt/atigeo/xpatterns-docker-compose
+    $ sudo ./xpatterns.sh init
 
 
 
